@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { ArrowRight, CalendarDays, Clock3, Flower2, Heart, Mail, MapPin, Menu, Phone, Sparkles, X } from 'lucide-react';
+import { ArrowRight, BarChart3, CalendarDays, Clock3, Flower2, Heart, LayoutDashboard, Mail, MapPin, Menu, Phone, ReceiptIndianRupee, Search, Settings, Sparkles, UsersRound, X } from 'lucide-react';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import NotFound from '@/pages/not-found';
 import heroArch from '@assets/mahadev-images/flower-arch-hero.png';
@@ -195,11 +195,63 @@ function Contact() {
 
 function Dashboard() {
   const [location] = useLocation();
-  return <div className="dashboard-shell"><div className="dashboard-inner"><aside className="dashboard-side"><Link href="/" className="brand" data-testid="link-dashboard-brand"><Brand /></Link><nav><Link href="/dashboard" className={location === '/dashboard' ? 'active' : ''} data-testid="link-dashboard-overview">Overview</Link><Link href="/booking" data-testid="link-dashboard-bookings">नई booking</Link><Link href="/gallery" data-testid="link-dashboard-gallery">Gallery</Link><Link href="/" data-testid="link-dashboard-site">मुख्य site</Link></nav></aside><main className="dashboard-content"><div className="dash-top"><div><div className="eyebrow">महादेव डेकोरेशन · internal</div><h1>नमस्ते, टीम.</h1><p>आज के जश्न और कल की तैयारियां, एक नज़र में.</p></div><Link href="/booking" className="button-primary" data-testid="link-dashboard-new-booking">+ नई booking</Link></div><div className="dash-stats"><div className="dash-stat" data-testid="stat-upcoming"><span>आने वाले समारोह</span><strong>12</strong></div><div className="dash-stat" data-testid="stat-this-month"><span>इस महीने पूरे हुए</span><strong>27</strong></div><div className="dash-stat" data-testid="stat-rating"><span>परिवारों की rating</span><strong>4.9</strong></div></div><div className="dash-table"><div className="dash-table-head"><span>परिवार</span><span>समारोह</span><span>तारीख़</span><span>स्थिति</span></div>{[{ name: 'आकाश और नेहा', event: 'रिसेप्शन', date: '18 मई', status: 'पुष्टि हुई' }, { name: 'रिया शर्मा', event: 'जन्मदिन', date: '24 मई', status: 'बात चल रही है' }, { name: 'साक्षी परिवार', event: 'हल्दी', date: '02 जून', status: 'पुष्टि हुई' }, { name: 'विवेक कुमार', event: 'सालगिरह', date: '09 जून', status: 'नई पूछताछ' }].map((row) => <div className="dash-row" key={row.name} data-testid={`row-booking-${row.name}`}><strong>{row.name}</strong><span>{row.event}</span><span>{row.date}</span><span className="status-pill">{row.status}</span></div>)}</div></main></div></div>;
+  return <div className="dashboard-shell"><div className="dashboard-inner"><aside className="dashboard-side"><Link href="/" className="brand" data-testid="link-dashboard-brand"><Brand /></Link><nav><Link href="/dashboard" className={location === '/dashboard' ? 'active' : ''} data-testid="link-dashboard-overview">Overview</Link><Link href="/booking" data-testid="link-dashboard-bookings">नई booking</Link><Link href="/gallery" data-testid="link-dashboard-gallery">Gallery</Link><Link href="/" data-testid="link-dashboard-site">मुख्य site</Link></nav></aside><main className="dashboard-content"><div className="dash-top"><div><div className="eyebrow">महादेव डेकोरेशन · customer space</div><h1>नमस्ते.</h1><p>लॉगिन करने के बाद आपकी bookings और quotations यहाँ दिखेंगी.</p></div><Link href="/booking" className="button-primary" data-testid="link-dashboard-new-booking">+ नई booking</Link></div><div className="empty-panel"><CalendarDays size={28} /><h2>अभी कोई booking नहीं दिख रही</h2><p>अपनी booking track करने के लिए phone OTP से login करें, या नया celebration request शुरू करें.</p><Link href="/booking" className="button-primary">बुकिंग शुरू करें <ArrowRight size={14} /></Link></div></main></div></div>;
+}
+
+const adminLinks = [
+  { href: '/admin', label: 'Overview', icon: LayoutDashboard },
+  { href: '/admin/bookings', label: 'Bookings', icon: CalendarDays },
+  { href: '/admin/calendar', label: 'Calendar', icon: CalendarDays },
+  { href: '/admin/customers', label: 'Customers', icon: UsersRound },
+  { href: '/admin/payments', label: 'Payments', icon: ReceiptIndianRupee },
+  { href: '/admin/portfolio', label: 'Portfolio', icon: ImageIcon },
+  { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/admin/settings', label: 'Settings', icon: Settings },
+];
+
+function ImageIcon({ size = 18 }: { size?: number }) {
+  return <span className="image-icon" style={{ width: size, height: size }} aria-hidden="true" />;
+}
+
+function AdminShell({ children, active }: { children: ReactNode; active: string }) {
+  return <div className="admin-shell"><aside className="admin-sidebar"><Link href="/" className="brand"><Brand /></Link><div className="admin-label">BUSINESS DESK</div><nav>{adminLinks.map(({ href, label, icon: Icon }) => <Link key={href} href={href} className={active === href ? 'active' : ''}><Icon size={16} />{label}</Link>)}</nav><Link href="/" className="admin-back">← मुख्य site</Link></aside><main className="admin-main">{children}</main></div>;
+}
+
+function AdminLogin() {
+  return <div className="admin-login"><div className="admin-login-card"><div className="brand-mark">म</div><div className="eyebrow">RESTRICTED ACCESS</div><h1>महादेव business desk</h1><p>यह area केवल provisioned admin accounts के लिए है. Customer account से यहाँ access नहीं मिलेगा.</p><Link href="/admin" className="button-primary" style={{ width: '100%', marginTop: 24 }}>Admin dashboard खोलें <ArrowRight size={14} /></Link><Link href="/" className="button-ghost" style={{ width: '100%', marginTop: 10 }}>मुख्य site पर जाएं</Link></div></div>;
+}
+
+function AdminPage({ active, title, eyebrow, description, children }: { active: string; title: string; eyebrow: string; description: string; children?: ReactNode }) {
+  return <AdminShell active={active}><div className="admin-header"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{description}</p></div><Link href="/booking" className="button-primary">+ नई booking</Link></div>{children}</AdminShell>;
+}
+
+function AdminOverview() {
+  const metrics = ['आज के events', 'आने वाले events', 'Pending inquiries', 'Confirmed bookings', 'Total revenue', 'Advance received', 'Pending payments', 'Monthly growth'];
+  return <AdminPage active="/admin" eyebrow="महादेव डेकोरेशन · business desk" title="नमस्ते, टीम." description="आज के जश्न और business की स्थिति, एक नज़र में."><div className="admin-live-note"><span className="live-dot" /> Live data Supabase से जुड़ेगा · अभी कोई record उपलब्ध नहीं है</div><div className="admin-metrics">{metrics.map((metric) => <Link key={metric} href={metric.includes('payment') || metric.includes('revenue') ? '/admin/payments' : '/admin/bookings'} className="admin-metric"><span>{metric}</span><strong>—</strong><small>डेटा उपलब्ध होने पर</small></Link>)}</div><div className="admin-lower-grid"><section className="admin-card"><div className="admin-card-title"><div><div className="eyebrow">NEEDS ATTENTION</div><h2>नई inquiries</h2></div><Link href="/admin/bookings">सभी देखें →</Link></div><div className="admin-empty"><Search size={22} /><p>अभी कोई नई inquiry नहीं है.</p><small>Public booking form से आने वाली requests यहाँ दिखेंगी.</small></div></section><section className="admin-card"><div className="admin-card-title"><div><div className="eyebrow">THIS MONTH</div><h2>Revenue snapshot</h2></div><Link href="/admin/analytics">Analytics →</Link></div><div className="admin-empty"><BarChart3 size={22} /><p>Charts live payments के बाद भरेंगे.</p><small>Revenue हमेशा verified payment records से निकलेगा.</small></div></section></div></AdminPage>;
+}
+
+function AdminBookings({ section = '/admin/bookings', title = 'Bookings', description = 'हर inquiry, quotation और booking का सुरक्षित workspace.' }: { section?: string; title?: string; description?: string }) {
+  const [query, setQuery] = useState('');
+  return <AdminPage active={section} eyebrow="BUSINESS DESK · BOOKINGS" title={title} description={description}><div className="admin-toolbar"><div className="admin-search"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="नाम, phone या booking ID खोजें" /></div><button className="button-ghost"><span>स्थिति</span>⌄</button><button className="button-ghost">तारीख़ ⌄</button></div><section className="admin-table-card"><div className="admin-table-head"><span>Booking</span><span>Event</span><span>Date</span><span>Status</span><span /></div><div className="admin-empty large"><CalendarDays size={24} /><p>{query ? `“${query}” के लिए कोई record नहीं मिला.` : 'अभी कोई booking record नहीं है.'}</p><small>Public booking requests Supabase से जुड़ने के बाद यहाँ दिखाई देंगी.</small><Link href="/booking" className="button-primary">Public booking flow देखें <ArrowRight size={14} /></Link></div></section></AdminPage>;
+}
+
+function AdminContentPage({ active, title, eyebrow, description, icon, message }: { active: string; title: string; eyebrow: string; description: string; icon: ReactNode; message: string }) {
+  return <AdminPage active={active} eyebrow={eyebrow} title={title} description={description}><section className="admin-card admin-content-empty"><div className="admin-icon">{icon}</div><h2>{message}</h2><p>यह screen real business records के लिए तैयार है. कोई sample या अनुमानित data नहीं दिखाया जा रहा.</p><button className="button-ghost">Refresh data ↻</button></section></AdminPage>;
+}
+
+function AdminCalendar() { return <AdminBookings section="/admin/calendar" title="Calendar" description="Events और team schedule एक जगह manage करें." />; }
+function AdminCustomers() { return <AdminContentPage active="/admin/customers" title="Customers" eyebrow="BUSINESS DESK · CUSTOMERS" description="Customer history और relationship notes." icon={<UsersRound />} message="Customer records अभी खाली हैं." />; }
+function AdminPayments() { return <AdminContentPage active="/admin/payments" title="Payments" eyebrow="BUSINESS DESK · PAYMENTS" description="Verified Razorpay payments और receipts." icon={<ReceiptIndianRupee />} message="Payment ledger अभी खाली है." />; }
+function AdminPortfolio() { return <AdminContentPage active="/admin/portfolio" title="Portfolio manager" eyebrow="BUSINESS DESK · PORTFOLIO" description="Public gallery में दिखने वाले works manage करें." icon={<ImageIcon size={28} />} message="Portfolio items अभी खाली हैं." />; }
+function AdminAnalytics() { return <AdminContentPage active="/admin/analytics" title="Analytics" eyebrow="BUSINESS DESK · ANALYTICS" description="Bookings, revenue और conversion का live view." icon={<BarChart3 />} message="Analytics के लिए verified records चाहिए." />; }
+function AdminSettings() { return <AdminContentPage active="/admin/settings" title="Settings" eyebrow="BUSINESS DESK · SETTINGS" description="Business details, service areas और team roster." icon={<Settings />} message="Business settings configure करें." />; }
+
+function AdminRouter() {
+  return <Switch><Route path="/admin/login" component={AdminLogin} /><Route path="/admin" component={AdminOverview} /><Route path="/admin/bookings" component={AdminBookings} /><Route path="/admin/calendar" component={AdminCalendar} /><Route path="/admin/customers" component={AdminCustomers} /><Route path="/admin/payments" component={AdminPayments} /><Route path="/admin/portfolio" component={AdminPortfolio} /><Route path="/admin/analytics" component={AdminAnalytics} /><Route path="/admin/settings" component={AdminSettings} /></Switch>;
 }
 
 function Router() {
-  return <ErrorRouted><Switch><Route path="/" component={Home} /><Route path="/booking" component={Booking} /><Route path="/gallery" component={Gallery} /><Route path="/packages" component={Packages} /><Route path="/about" component={About} /><Route path="/contact" component={Contact} /><Route path="/dashboard" component={Dashboard} /><Route component={NotFound} /></Switch></ErrorRouted>;
+  return <ErrorRouted><Switch><Route path="/admin" component={AdminRouter} /><Route path="/" component={Home} /><Route path="/booking" component={Booking} /><Route path="/gallery" component={Gallery} /><Route path="/packages" component={Packages} /><Route path="/about" component={About} /><Route path="/contact" component={Contact} /><Route path="/dashboard" component={Dashboard} /><Route component={NotFound} /></Switch></ErrorRouted>;
 }
 
 function ErrorRouted({ children }: { children: ReactNode }) {
