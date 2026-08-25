@@ -1,0 +1,257 @@
+════════════════════════════════════════════════════════════════
+MAHADEV DECORATION — PREMIUM 3D ANIMATED WEBSITE
+PART 2 of 3 — BOOKING FLOW, DATABASE, AUTH & CUSTOMER DASHBOARD
+════════════════════════════════════════════════════════════════
+
+INSTRUCTIONS FOR THE CODING AGENT:
+This continues the SAME project you built in Part 1 (paste Part 1
+first if this is a fresh session, or confirm it's already in the
+codebase). Do not redesign or rebuild anything from Part 1 — reuse
+its design tokens, component system, and typed data layer. This part
+adds the booking engine, real Supabase backend, authentication, and
+the customer-facing dashboard. Stop at the end of this part and
+summarize before continuing to Part 3 (admin dashboard).
+
+────────────────────────────────────────────────────────────────
+BACKEND: SUPABASE
+────────────────────────────────────────────────────────────────
+Use Supabase for auth, Postgres database, storage, Row Level
+Security, and realtime booking-status updates. Razorpay for payments
+(architecture + integration points; do not fake successful payments —
+see Payment System below). Google Maps for location fields.
+
+────────────────────────────────────────────────────────────────
+DATABASE SCHEMA (Postgres via Supabase)
+────────────────────────────────────────────────────────────────
+Create these tables with UUID primary keys, created_at/updated_at
+timestamps, proper foreign keys, and indexes on frequently-filtered
+columns (status, event_date, customer_id):
+
+profiles, roles, customers, services, packages, package_items,
+portfolio_categories, portfolio_items, portfolio_media,
+booking_requests, bookings, booking_status_history, booking_images,
+quotations, quotation_items, payments, payment_receipts, reviews,
+team_members, team_assignments, service_areas, business_settings,
+notifications, contact_inquiries
+
+Guidance per table:
+- profiles: links to auth.users, holds role (customer/admin/team),
+  display name, phone, whatsapp, avatar
+- customers: extended customer info, total_spending (derived/cached),
+  events_completed (derived/cached), internal admin notes
+- services / packages / package_items: mirror the typed config from
+  Part 1 but now as the source of truth — Part 1's static data layer
+  should be refactored to fetch from these tables, keeping the exact
+  same component props/shape so no UI changes are needed
+- portfolio_categories / portfolio_items / portfolio_media: same
+  approach for the gallery — items carry title, category, event_type,
+  location, price_range, description, services_included (array or
+  join table), featured flag, seo fields, public/private flag; media
+  is a separate table so each item supports multiple images/videos
+- booking_requests: the raw submission from the public booking
+  wizard, status starts at "pending_review"
+- bookings: created/promoted from an approved booking_request, holds
+  event_type, event_date, location fields, budget_range, style,
+  guest_count, venue_type, indoor/outdoor, requirements, status,
+  total_price, advance_paid, remaining_amount
+- booking_status_history: append-only log of every status change,
+  with timestamp + actor + optional note — this powers the customer
+  timeline UI
+- booking_images: reference images the customer uploaded during
+  booking, plus event-day photos the admin uploads after
+- quotations / quotation_items: quotation header (customer, booking
+  ref, total, advance_required, remaining, validity_date, terms,
+  notes, status: draft/sent/accepted/rejected/modification_requested)
+  and line items (description, quantity, unit_price, discount)
+- payments / payment_receipts: every payment attempt/confirmation,
+  linked to a Razorpay order/payment id, type (advance/partial/final),
+  amount, status, and a generated receipt (transaction ref, date,
+  amount, type) — status only becomes "confirmed" via verified
+  webhook/response, never optimistically
+- reviews: customer_id, booking_id, rating, text, event photo,
+  approved (bool, default false), featured (bool)
+- team_members / team_assignments: staff roster and which staff are
+  assigned to which booking
+- service_areas: admin-editable list backing the homepage service
+  area section
+- business_settings: singleton-style row(s) for phone number,
+  WhatsApp number, address, business hours, social links — so nothing
+  from Part 1's header/footer/contact page stays hardcoded
+- notifications: in-app notification feed for admin (new inquiry,
+  payment received, review submitted, etc.)
+- contact_inquiries: submissions from the /contact form
+
+────────────────────────────────────────────────────────────────
+SECURITY / ROW LEVEL SECURITY
+────────────────────────────────────────────────────────────────
+- Customers can only read/write their own profile, bookings,
+  quotations, payments, and reviews (enforce via RLS policies keyed
+  on auth.uid(), not just client-side checks)
+- Admins/team roles get broader access per role, defined via the
+  roles/profiles relationship — never via a hardcoded email check
+- Never expose the Supabase service role key client-side
+- Never expose payment secrets client-side; all Razorpay
+  order-creation/signature-verification happens server-side
+  (route handlers / edge functions), client only gets what it needs
+  to open the checkout widget
+- Validate every form server-side with Zod schemas mirrored between
+  client and server — never trust client-side validation alone
+- All Part 1 forms (contact form) must now actually persist to
+  contact_inquiries instead of being purely client-side
+
+────────────────────────────────────────────────────────────────
+AUTHENTICATION
+────────────────────────────────────────────────────────────────
+Customer auth via Supabase Auth — support phone OTP as the primary
+flow (matches how this business's customers actually behave) with
+email/password as a fallback. Admin auth is a separate, more
+restricted login (/admin/login), never reachable by signing up
+through the public flow — admin accounts are provisioned, not
+self-registered.
+
+────────────────────────────────────────────────────────────────
+BOOKING FLOW — MULTI-STEP PREMIUM WIZARD
+────────────────────────────────────────────────────────────────
+Build at /booking as a polished multi-step wizard (BookingStepper
+component from Part 1's system, now fully wired). Persist progress
+in Zustand so back/forward doesn't lose data; show a slim animated
+progress indicator matching the site's motion language (not a
+generic form-library default).
+
+If the user arrived via a gallery/package "book this" button, the
+relevant step(s) should already be prefilled from that context (the
+hook you left in Part 1) — show a small dismissible chip like
+"Wedding Decoration से प्रीफिल्ड" so it's clear what was carried over.
+
+STEP 1 — Event Type: Wedding, Birthday, Anniversary, Haldi, Mehendi,
+Car, Stage, Other (icon grid, single-select).
+
+STEP 2 — Event Date: calendar UI showing per-date status — Available
+/ Limited availability / Already booked — driven by real booking
+density from the bookings table, but never reveal whose booking it
+is or any internal details, only the aggregate status. Disable fully
+booked dates from selection.
+
+STEP 3 — Event Location: city, area, full address, venue name,
+Google Maps location picker/autocomplete.
+
+STEP 4 — Budget: preset ranges (₹2,000–5,000 / 5,000–10,000 /
+10,000–25,000 / 25,000–50,000 / 50,000+) plus a custom-amount option.
+
+STEP 5 — Decoration Style: Royal, Floral, Minimal, Traditional,
+Modern, Luxury, Custom — visual style-swatch cards, multi-select
+allowed; support multiple reference-image uploads (stored via
+Supabase Storage, linked to the eventual booking_images row).
+
+STEP 6 — Event Details: guest count, venue type, indoor/outdoor
+toggle, special requirements, additional notes (free text).
+
+STEP 7 — Customer Details: name, phone, WhatsApp, email (optional).
+If the user is logged in, prefill from their profile.
+
+FINAL STEP — Booking Summary: full recap of every prior step,
+editable via "edit" links back to each step, then a single
+"Request Booking" submit. On submit: create a booking_requests row
+with status "pending_review" — never auto-confirm. Show a clear
+success state explaining an admin will review and send a quotation,
+plus a link to WhatsApp for anything urgent.
+
+/booking/success — dedicated success page with the tasteful 3D
+petal/confetti burst from Part 1's 3D spec (plays once, skippable),
+booking reference number, and a "देखें मेरी बुकिंग" CTA (to customer
+dashboard if logged in, else a prompt to create an account/verify
+phone so they can track it).
+
+────────────────────────────────────────────────────────────────
+BOOKING STATUS SYSTEM
+────────────────────────────────────────────────────────────────
+Statuses (in order, all must exist as a shared enum used by both
+customer and admin UI): Inquiry, Pending Review, Quote Sent, Awaiting
+Customer Approval, Advance Pending, Confirmed, In Preparation, Team
+Assigned, In Progress, Completed, Remaining Payment Pending, Closed,
+Cancelled.
+
+Build a reusable <BookingTimeline/> component (visual vertical/
+horizontal timeline, gold-highlighted current step, checkmarks on
+completed steps) driven entirely by booking_status_history — used on
+both the customer dashboard and the admin booking detail panel
+(Part 3), so build it generically now.
+
+────────────────────────────────────────────────────────────────
+QUOTATION SYSTEM (customer-facing half; admin creation UI is Part 3)
+────────────────────────────────────────────────────────────────
+Customer sees a <QuotationCard/>: line items (description, qty, unit
+price), discount, total, advance required, remaining amount, terms,
+validity date — and three actions: Accept Quotation, Request
+Modification (opens a note/comment field), Reject Quotation. Accepting
+moves booking status to "Advance Pending" and unlocks payment.
+Generate a printable/downloadable PDF version of the quotation
+(architecture: server-side PDF generation, not a screenshot hack).
+
+────────────────────────────────────────────────────────────────
+PAYMENT SYSTEM
+────────────────────────────────────────────────────────────────
+Razorpay integration architecture for advance, partial, and final
+payments. Flow: client requests a server-created order → Razorpay
+checkout opens → on completion, verify the payment signature
+server-side (or via webhook) → only then write a "confirmed" payments
+row and update bookings.advance_paid/remaining_amount → only then
+advance booking_status. Never mark a payment or booking as confirmed
+from a client-side success callback alone — always confirm against
+the verified server/webhook response.
+Customer-facing payment UI shows: Total, Advance (paid/pending),
+Remaining, current payment status, full payment history, and a
+downloadable receipt per payment (transaction reference, date,
+amount, type) generated only after confirmation.
+
+────────────────────────────────────────────────────────────────
+CUSTOMER DASHBOARD (/dashboard, auth-gated)
+────────────────────────────────────────────────────────────────
+Overview: "Welcome, [Customer Name]", upcoming event card with a live
+countdown ("आपका इवेंट 12 दिनों में है"), quick links to bookings/
+payments/support.
+
+My Bookings (/dashboard/bookings): list with booking ID, event type,
+date, location, status badge, total price, advance paid, remaining
+amount — click through to detail.
+
+Booking Detail (/dashboard/bookings/[id]): event info, selected
+decoration style + reference images, the quotation (via
+<QuotationCard/>), full payment history, the <BookingTimeline/>,
+admin notes visible to the customer, a field for the customer's own
+notes, and a WhatsApp support shortcut prefilled with the booking ID.
+
+My Reviews: past reviews submitted, their approval status.
+
+Profile/Settings: edit contact details, notification preferences.
+
+Use LoadingState/EmptyState/ErrorState from Part 1's component system
+consistently — every list view needs a real empty state ("अभी कोई
+बुकिंग नहीं है" + a CTA to start one), not a blank screen.
+
+────────────────────────────────────────────────────────────────
+FORMS & VALIDATION
+────────────────────────────────────────────────────────────────
+Every form in this part (booking wizard steps, quotation response,
+review submission, profile edit) uses React Hook Form + Zod, with
+schemas shared/mirrored server-side. Real loading, empty, and error
+states everywhere — no silent failures, no infinite spinners.
+
+────────────────────────────────────────────────────────────────
+CRITICAL RULES FOR THIS PART
+────────────────────────────────────────────────────────────────
+- No fake data: once this part is built, bookings/payments/quotations
+  must read and write real Supabase data, not mock JSON
+- No dead buttons: every button in the wizard, dashboard, and
+  quotation/payment UI must actually do something (navigate, submit,
+  mutate data, open a real modal)
+- Don't touch/redesign Part 1's public pages beyond wiring their data
+  layer to Supabase — visual design stays exactly as already built
+
+────────────────────────────────────────────────────────────────
+END OF PART 2 — WAIT FOR PART 3 BEFORE CONTINUING
+────────────────────────────────────────────────────────────────
+Part 3 covers the full admin dashboard (bookings, calendar, customers,
+payments, portfolio manager, package manager, review moderation,
+analytics, settings), remaining security hardening, final file
+structure/build order, and the pre-launch quality checklist.

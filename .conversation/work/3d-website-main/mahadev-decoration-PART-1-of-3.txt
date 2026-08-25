@@ -1,0 +1,391 @@
+════════════════════════════════════════════════════════════════
+MAHADEV DECORATION — PREMIUM 3D ANIMATED WEBSITE
+PART 1 of 3 — BRAND, DESIGN SYSTEM & PUBLIC PAGES
+════════════════════════════════════════════════════════════════
+
+INSTRUCTIONS FOR THE CODING AGENT:
+This is Part 1 of a 3-part build prompt for one production project.
+Build ONLY what is described in this part right now (design system +
+public-facing pages). Do not scaffold booking, auth, admin, or
+database logic yet — that comes in Part 2 and Part 3, and you must
+not break anything you build now when those arrive. After finishing
+this part, stop and summarize what you built, what decisions you
+made, and any open questions before continuing.
+
+────────────────────────────────────────────────────────────────
+ROLE & MISSION
+────────────────────────────────────────────────────────────────
+Act as a combined senior product designer, award-winning UI/UX
+designer, senior frontend engineer, full-stack architect, motion
+designer, Three.js/WebGL developer, luxury brand designer, CRO
+expert, and Indian local-business SaaS architect — all at once.
+
+Build a world-class, premium, cinematic, interactive decoration
+business website and management platform for:
+
+महादेव डेकोरेशन (Mahadev Decoration)
+
+This must NOT look like a generic template, a basic Indian business
+site, or a portfolio. It should feel like a luxury wedding brand
+fused with a modern SaaS platform, delivered as a cinematic
+interactive experience — the kind of site that makes a visitor think
+"this is a serious premium event decoration brand," not a small
+local shop.
+
+A reference screenshot of the target hero section is attached to
+this conversation (dark royal-purple/black hero, gold "बुकिंग करें"
+navbar CTA, floral-arch photo on the right, vertical stats rail on
+the far right, six occasion cards below, a trust/stat strip, and a
+5-step "how it works" row with connecting arrows). Treat that
+screenshot as the literal visual target for the hero and the two
+sections directly beneath it — match its layout, spacing rhythm,
+and information density, not just its color mood.
+
+────────────────────────────────────────────────────────────────
+BUSINESS CONTEXT & GOAL
+────────────────────────────────────────────────────────────────
+Today customers book only via phone calls and WhatsApp — no digital
+trail, no structured pricing, no way to check availability, high
+manual chaos for the owner. This platform must digitize the funnel
+end-to-end while keeping WhatsApp as an always-available fallback,
+never removing it.
+
+Target funnel:
+Discover site → browse real past work → pick event type → see
+packages/starting prices → pick a date → check availability → submit
+requirements → admin sends quotation → customer approves → advance
+payment → booking confirmed → customer tracks status on a timeline →
+event happens → remaining payment recorded → review collected →
+completed event becomes a new portfolio entry.
+
+────────────────────────────────────────────────────────────────
+BRAND
+────────────────────────────────────────────────────────────────
+Name (Hindi): महादेव डेकोरेशन
+Name (English): Mahadev Decoration
+Tagline: हर खुशी को बनाएं यादगार
+Secondary tagline: आपकी खुशी, हमारी पहचान
+Logo mark: trishul (त्रिशूल) icon in gold, paired with the wordmark —
+see reference screenshot top-left for exact placement and weight.
+
+Services (all must exist as first-class categories across gallery,
+services, packages, and booking):
+Wedding, Stage, Birthday, Anniversary, Haldi, Mehendi, Car, Mandap,
+Home, Flower, Lighting, Custom Event decoration.
+
+Primary phone (use as placeholder, admin-editable): 7091514078
+
+────────────────────────────────────────────────────────────────
+VISUAL IDENTITY — MATCH THE REFERENCE IMAGE
+────────────────────────────────────────────────────────────────
+Feeling: royal, elegant, luxury, emotional, cinematic, modern Indian
+celebration, premium wedding experience — expensive, never loud.
+
+Color tokens (define as CSS variables / Tailwind theme extension,
+use consistently everywhere, do not invent new colors ad hoc):
+--color-bg-void        #0A0710   (near-black backdrop)
+--color-bg-purple      #1A0B2E   (midnight purple panels)
+--color-bg-burgundy    #3D0F24   (deep maroon accents/gradients)
+--color-gold           #D4AF37   (primary accent, CTAs, borders)
+--color-gold-light     #F0C868   (hover states, glows)
+--color-champagne      #F5E6C8   (soft highlight text on dark bg)
+--color-amber          #E8A33D   (secondary warm accent)
+--color-emerald        #145A32   (rare secondary accent — sparingly)
+--color-floral-red     #8B1E3F   (rare secondary accent — sparingly)
+--color-text-primary   #F5F0E8   (body text on dark)
+--color-text-muted     #B8A9C9   (secondary text on dark)
+
+Gradients: radial/linear blends of void → purple → burgundy only.
+Gold is used as a 1px hairline border, glow, icon fill, and CTA fill
+— never as a giant flat block.
+
+Explicitly avoid: rainbow/candy gradients, heavy glassmorphism,
+cartoon icon sets, bright white sections, more than 2 animated
+things competing for attention in the same viewport at once.
+
+Typography: a premium Devanagari display face for Hindi headings
+(large hero word "महादेव" / "डेकोरेशन" must render with real weight
+and warmth, not a generic system Devanagari font) paired with a
+clean serif or high-contrast sans for English/UI text. Numbers in
+stat panels use a tabular, slightly condensed weight. Load fonts via
+next/font, subset for Devanagari + Latin only.
+
+Decorative motifs (use as recurring texture, not clutter): thin gold
+trishul/diya line-icons, floating flower-petal particles, soft bokeh
+light dots, a fine gold corner-flourish rule above section headings
+(matches the small trishul-and-dashes flourish above "हर खुशी को
+बनाएं यादगार" in the reference image) — build this as a reusable
+<SectionFlourish/> component.
+
+────────────────────────────────────────────────────────────────
+TECHNOLOGY STACK
+────────────────────────────────────────────────────────────────
+- Next.js (latest stable, App Router) + TypeScript
+- Tailwind CSS (custom theme = tokens above); custom CSS only for
+  things Tailwind genuinely can't express (complex SVG filters,
+  custom easing curves)
+- Framer Motion for component-level motion; GSAP + ScrollTrigger for
+  scroll-driven cinematic sequences (hero parallax, step-by-step
+  reveal, connecting-line draw animations)
+- Lenis for smooth scrolling site-wide
+- React Three Fiber + Three.js + Drei for the strategic 3D moments
+  only (see 3D section below) — never for full-page backgrounds
+- Lucide React for icons
+- React Hook Form + Zod for every form (booking form arrives Part 2)
+- Zustand for cross-component UI state (e.g. active gallery filter,
+  booking wizard step — wizard logic itself lands in Part 2)
+- Recharts reserved for admin analytics (Part 3)
+- Supabase, Razorpay, Google Maps: architecture only referenced here,
+  actually wired in Part 2/3
+
+────────────────────────────────────────────────────────────────
+PERFORMANCE & MOTION RULES (non-negotiable, apply to everything)
+────────────────────────────────────────────────────────────────
+- Cinematic look must never cost smoothness. Target excellent Core
+  Web Vitals on a mid-range Android phone, not just desktop Chrome.
+- Lazy-load every heavy section (3D canvas, gallery masonry images,
+  below-the-fold content) with intersection-observer based mounting.
+- All images: next/image, responsive srcset, compressed, explicit
+  width/height to avoid layout shift.
+- Detect low-end devices / prefers-reduced-motion and degrade
+  gracefully: fewer particles, no 3D canvas, simpler transitions —
+  never a broken or empty page.
+- If WebGL is unsupported, render a beautiful static image/gradient
+  fallback in place of every 3D element — no blank boxes.
+- Motion language, defined once and reused everywhere:
+  • Entrances: fade + 16–24px slide, ~500–700ms, ease-out
+  • Cards: lift 4–8px + soft shadow/gold-glow on hover, ~250ms
+  • Images inside cards: slow zoom (scale 1 → 1.06) over the hover
+    duration, never a snap
+  • Headings: elegant staggered word/line reveal on scroll-in
+  • Buttons: subtle magnetic hover (small cursor-follow offset),
+    no bounce, no spin, no flashing
+  • Scroll reveals: once-per-element (don't re-trigger on scroll-up
+    unless intentionally used for the step-progress line)
+  Every animation must justify itself with a purpose (draw attention,
+  show hierarchy, confirm an action) — no decoration for its own sake.
+
+────────────────────────────────────────────────────────────────
+3D EXPERIENCE — STRATEGIC ONLY
+────────────────────────────────────────────────────────────────
+Build these as isolated, lazy-loaded R3F scenes with their own
+loading + reduced-motion + no-WebGL fallbacks:
+1. Hero background depth layer: soft floating flower-petal particles
+   + gentle bokeh light points drifting behind the hero photo, with a
+   subtle camera-parallax on mouse move / device tilt. Keep particle
+   count low (mobile: near-zero or fully static fallback).
+2. "Choose your occasion" cards: a light 3D tilt-on-hover effect
+   (CSS 3D transform is fine here, R3F not required) synced with the
+   gold border glow.
+3. Booking Success page (Part 2): a brief, tasteful 3D
+   flower/confetti celebration burst — plays once, auto-stops, skip
+   button available.
+Nowhere else. Do not turn the site into an interactive game or add
+3D to sections where it doesn't add real value.
+
+────────────────────────────────────────────────────────────────
+GLOBAL LAYOUT — HEADER / NAV / FLOATING ACTIONS
+────────────────────────────────────────────────────────────────
+Sticky translucent-dark navbar (matches reference image): logo mark
++ wordmark left; center nav links — होम · हमारे बारे में · सर्विसेज ·
+गैलरी · पैकेज · बुकिंग · कॉन्टेक्ट; right side — a phone pill button
+(shows the business number) and a solid-gold "बुकिंग करें" CTA
+button. Active link gets a thin gold underline.
+
+Floating action buttons (desktop): WhatsApp button bottom-left,
+"Call Now" pill bottom-right (as shown bottom corners of reference
+image) — both persistent, subtle idle pulse only, never obstruct
+content.
+
+Mobile: replace floating buttons with a sticky bottom action bar —
+Call · WhatsApp · Book Now — large thumb-friendly targets, safe-area
+aware, always visible, never covering form inputs (auto-hide on
+keyboard focus).
+
+────────────────────────────────────────────────────────────────
+HOME PAGE — FULL SECTION SPEC
+────────────────────────────────────────────────────────────────
+
+SECTION 1 — CINEMATIC HERO (match reference image structure exactly)
+Two-column desktop layout, full-bleed dark background:
+Left column:
+  - Small gold flourish line with trishul icon
+  - Eyebrow line: "हर खुशी को बनाएं यादगार"
+  - Massive display heading, two stacked lines: "महादेव" / "डेकोरेशन"
+    in gold-to-champagne gradient fill
+  - Short supporting line (2 lines): "वेडिंग, बर्थडे, हल्दी, मेहंदी,
+    स्टेज, कार और हर खास अवसर के लिए शानदार सजावट।"
+  - Three buttons in a row: gold-filled primary "बुकिंग करें", outlined
+    secondary "हमारा काम देखें", WhatsApp-green tertiary "WhatsApp करें"
+Right column:
+  - Large photographic hero image: floral mandap/stage arch, hanging
+    warm fairy lights, ornate gold sofa — use the attached reference
+    image's composition as the layout guide (real photography should
+    be swappable from the portfolio manager later, don't hardcode)
+  - Subtle depth: slow ambient zoom/pan on the image, floating petal
+    particles drifting in front of it, soft light-flare movement
+Far right: a vertical glass-dark stat rail with 3 stacked stats, each
+with a small gold icon, big number, small caption — content should be
+admin-editable later, seed with: "1000+ खुश ग्राहक", "5+ वर्ष का
+अनुभव", "24/7 सपोर्ट" (or equivalent trio — keep exactly 3 to match
+the reference image's rail, not the longer 4-stat list some briefs
+mention elsewhere).
+Left/right edge: small circular prev/next arrow controls (as in the
+reference image) if the hero cycles through more than one background
+photo — implement as an optional auto-advancing carousel, pause on
+hover/focus, swipe-enabled on mobile.
+
+SECTION 2 — TRUST STRIP
+Directly below hero, a slim horizontal band with checkmark items:
+✓ अनुभवी टीम · ✓ उचित मूल्य · ✓ कस्टम डिजाइन · ✓ समय पर सेवा · ✓
+WhatsApp सपोर्ट — rendered as a slow, elegant, pausable-on-hover
+horizontal marquee, single row, no jitter.
+
+SECTION 3 — अपने अवसर को चुनें (Choose Your Occasion)
+Six large interactive cards in a responsive grid (match reference
+image's 6-card row: Wedding, Birthday, Car, Haldi, Mehendi, Stage).
+Each card: high-quality image, small icon badge, service name in
+Hindi, "Starting from ₹X" price, one-line description, gold "देखें
+डिजाइन" button. Hover: card lifts, image slow-zooms, thin gold border
+glow appears, price/button animate slightly upward. Build as a
+reusable, data-driven <OccasionCard/> — the six categories must come
+from a typed array/config, not be hardcoded six times, since more
+categories (Anniversary, Mandap, Home, Lighting, Custom) will be
+added via the admin portfolio manager in Part 3.
+Directly beneath this grid, a compact 4-stat bar (as in reference
+image): trophy icon "1500+ इवेंट पूरे किए", people icon "25+ टीम
+मेंबर", pin icon "10+ शहरों में सेवा", smiley icon "100% ग्राहक
+संतुष्टि" — single row, evenly spaced, no card chrome, just icon +
+number + label.
+
+SECTION 4 — हमारी शानदार सजावट (Featured Work)
+Premium masonry/staggered gallery grid. Filter pills across the top:
+All · Wedding · Birthday · Car · Haldi · Mehendi · Stage (active
+pill filled gold, others outlined). Filtering animates items out/in
+(no instant grid reshuffle jump — use a shared-layout transition).
+Clicking an image opens an immersive full-screen modal with: large
+image (swipeable if multiple photos for that entry), event name,
+location, decoration type, price range, services-included list,
+description, and a gold "ऐसा ही डिजाइन बुक करें" button. That button
+must be wired later (Part 2) to open the booking flow with the event
+type + style pre-filled from this gallery item — leave a clear,
+typed prop/callback hook for that now so Part 2 can plug straight
+into it without refactoring this component.
+Build the gallery as a fully data-driven, reusable system (typed
+Portfolio item shape: id, title, category/eventType, location,
+priceRange, description, servicesIncluded[], images[], featured) —
+never hardcode it around a single event's images.
+
+SECTION 5 — हमारा काम करने का तरीका (How Booking Works)
+Cinematic horizontal 5-step process row exactly matching the
+reference image's five circular numbered nodes with connecting
+arrows: 01 बुकिंग करें, 02 क्वोटेशन पाएं, 03 एडवांस पेमेंट करें, 04
+डेकोरेशन सेटअप, 05 इवेंट एन्जॉय करें — each node has an icon, step
+number badge, and 1–2 line caption underneath, arrows animate/draw
+progressively as the section scrolls into view (GSAP ScrollTrigger),
+each node highlights sequentially as its arrow completes. On mobile,
+collapse to a vertical stepper with a vertical connecting line.
+
+SECTION 6 — FEATURED PACKAGES
+Premium pricing cards, data-driven (packages come from the same
+config system as portfolio categories, since these are managed by
+admin in Part 3). Seed content:
+  Birthday Basic — Starting ₹2,000
+  Birthday Premium — ₹5,000–₹10,000
+  Wedding Standard — ₹15,000+
+  Wedding Premium — ₹50,000+
+Each card: what's included (short bullet list), estimated setup
+time, decoration area, customization availability badge, two
+buttons — outlined "View Details" (→ Package Detail page) and gold
+"Customize Package" (→ booking flow, prefilled, Part 2 hook). Always
+label uncertain pricing "Starting from ₹X" — never show a single
+number as if it's final when it depends on customization.
+
+SECTION 7 — क्यों चुनें हमें (Why Choose Us)
+Elegant animated feature cards, 6 items: Creative Designs,
+Experienced Team, Affordable Pricing, On-Time Setup, Custom
+Decoration, Professional Photography Support — thin gold-line icons,
+staggered scroll-in reveal, no heavy card chrome.
+
+SECTION 8 — REAL CUSTOMER REVIEWS
+Card carousel/grid: customer photo, name, event type, star rating,
+review text, optional event photo thumbnail. "अपना अनुभव साझा करें"
+button opens a review-submission form (form UI now; the "only
+approved reviews go public" moderation logic is wired to real data
+in Part 3 — for now, seed with realistic static reviews using
+realistic Indian names, e.g. Aman Kumar, Priya Kumari, Rahul Singh —
+never "John Doe"/"Test User").
+
+SECTION 9 — SERVICE AREA
+Interactive map section (Google Maps embed/placeholder now, real
+integration architecture in Part 2) highlighting Begusarai as the
+home base plus a list of nearby serviced areas as chips/pins. Leave
+this clearly structured so admin can edit the area list later
+(Part 3), don't hardcode it as flat prose.
+
+SECTION 10 — FINAL CTA
+Full-width cinematic closing band: "आपका अगला खास दिन और भी खूबसूरत
+बनाते हैं।" with two buttons — gold "बुकिंग शुरू करें" and green
+"WhatsApp करें". Subtle petal/light particle background, same
+restrained motion language as the hero.
+
+────────────────────────────────────────────────────────────────
+OTHER PUBLIC PAGES (Part 1 scope)
+────────────────────────────────────────────────────────────────
+- /services — full grid of all 12 service categories (not just the
+  6 hero ones), each linking to a filtered gallery view
+- /gallery — the full masonry gallery with all filters (superset of
+  the homepage featured section)
+- /gallery/[slug] — gallery detail / immersive view as its own page
+  (in addition to the modal, for shareable deep links + SEO)
+- /packages — full package grid (superset of homepage section)
+- /packages/[slug] — package detail page: full inclusions, image
+  gallery for that package, FAQ, "Customize Package" CTA
+- /about — brand story, team, experience stats, photos
+- /reviews — full reviews page with all approved reviews, filters by
+  event type/rating
+- /contact — contact form (client-side validated now, wired to real
+  submission storage in Part 2), business hours, map, WhatsApp/call
+  buttons, address
+
+Do NOT build /booking, /login, /dashboard, or any /admin/* route yet
+— stub each as a simple "coming in next phase" placeholder page ONLY
+if routing requires it to exist, otherwise skip entirely. Booking,
+auth, and dashboards are specified fully in Part 2 and Part 3.
+
+────────────────────────────────────────────────────────────────
+COMPONENT SYSTEM (build these now, reusable, typed props)
+────────────────────────────────────────────────────────────────
+Button, SectionHeading, SectionFlourish, AnimatedText, ServiceCard/
+OccasionCard, PortfolioCard, PackageCard, ReviewCard, StatBadge,
+TrustMarquee, ProcessStepper, Modal, Toast, EmptyState, LoadingState,
+ErrorState, FloatingActions (desktop) / MobileActionBar. Keep
+business/content logic (the actual service/package/portfolio data)
+separate from these presentational components — put seed data in a
+typed config/data layer now so Part 2/3 can swap it for live Supabase
+data without touching the components themselves.
+
+────────────────────────────────────────────────────────────────
+SEO & ACCESSIBILITY (apply now, to every Part 1 page)
+────────────────────────────────────────────────────────────────
+- Proper metadata, Open Graph, Twitter cards per page
+- Local business + service structured data (schema.org)
+- Descriptive alt text on every image (never empty/generic)
+- Target keyword intent naturally in copy/headings: "Decoration in
+  Begusarai", "Wedding decoration Begusarai", "Birthday decoration
+  Begusarai", "Car decoration Begusarai", "Stage decoration Begusarai"
+- Full keyboard navigation, visible focus states, ARIA labels on
+  icon-only buttons, sufficient color contrast against the dark
+  palette (test gold-on-void and champagne-on-purple combos
+  specifically), respect prefers-reduced-motion everywhere
+- Proper Devanagari rendering throughout — no broken/mojibake Hindi,
+  no machine-translated-sounding phrasing
+
+────────────────────────────────────────────────────────────────
+END OF PART 1 — WAIT FOR PART 2 BEFORE CONTINUING
+────────────────────────────────────────────────────────────────
+Part 2 will specify: the full multi-step booking flow, booking status
+system, Supabase database schema, authentication, and the customer
+dashboard. Do not invent booking/auth/database logic ahead of that —
+keep clean seams (typed data layer, clear component boundaries) so
+Part 2 slots in without reworking what you build now.

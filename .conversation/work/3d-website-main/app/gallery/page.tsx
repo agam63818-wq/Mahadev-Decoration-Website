@@ -1,0 +1,37 @@
+import type { Metadata } from 'next'
+import { Suspense } from 'react'
+import { SectionHeading } from '@/components/ui/SectionHeading'
+import { getAllPortfolioItems } from '@/services/portfolio'
+import { GalleryPageClient } from '@/features/gallery/GalleryPageClient'
+
+export const metadata: Metadata = {
+  title: 'गैलरी — हमारे बेहतरीन काम',
+  description:
+    'महादेव डेकोरेशन की गैलरी — वेडिंग, बर्थडे, हल्दी, मेहंदी, स्टेज, कार डेकोरेशन के बेहतरीन काम देखें। बेगूसराय, बिहार।',
+  openGraph: {
+    title: 'गैलरी | महादेव डेकोरेशन',
+    description: 'हमारे 1500+ इवेंट्स की झलक — हर डिजाइन एक नई कहानी',
+  },
+}
+
+export default async function GalleryPage() {
+  const items = await getAllPortfolioItems()
+
+  return (
+    <div className="min-h-screen bg-bg-void pt-20">
+      <div className="bg-gradient-to-b from-bg-purple to-bg-void py-16 px-4">
+        <div className="max-w-7xl mx-auto text-center">
+          <SectionHeading
+            title="हमारी शानदार सजावट"
+            subtitle="हर इवेंट एक नई कहानी — हमारे बेहतरीन कामों की झलक"
+          />
+        </div>
+      </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <Suspense fallback={<div className="text-text-muted text-center py-12">लोड हो रहा है...</div>}>
+          <GalleryPageClient items={items} />
+        </Suspense>
+      </div>
+    </div>
+  )
+}

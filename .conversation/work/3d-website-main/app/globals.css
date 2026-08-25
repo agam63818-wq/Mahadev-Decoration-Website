@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Google Fonts (loaded at runtime, not build time) ───────────────────── */
+/* In production with network access, these load Noto Serif Devanagari,      */
+/* Playfair Display, and Inter. In CI/offline builds, system fonts are used. */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+Devanagari:wght@400;600;700;900&family=Playfair+Display:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap')
+  layer(fonts);
+
+/* ─── Font variable definitions ──────────────────────────────────────────── */
+:root {
+  --font-devanagari: 'Noto Serif Devanagari', 'Mangal', 'Nirmala UI', serif;
+  --font-display: 'Playfair Display', 'Georgia', serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ─── CSS Custom Properties (brand tokens) ───────────────────────────────── */
+:root {
+  --color-bg-void: #0A0710;
+  --color-bg-purple: #1A0B2E;
+  --color-bg-burgundy: #3D0F24;
+  --color-gold: #D4AF37;
+  --color-gold-light: #F0C868;
+  --color-champagne: #F5E6C8;
+  --color-amber: #E8A33D;
+  --color-emerald: #145A32;
+  --color-floral-red: #8B1E3F;
+  --color-text-primary: #F5F0E8;
+  --color-text-muted: #B8A9C9;
+}
+
+/* ─── Base ────────────────────────────────────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  background-color: var(--color-bg-void);
+  color: var(--color-text-primary);
+  font-family: var(--font-body), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Focus rings ─────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+/* ─── Selection ───────────────────────────────────────────────────────────── */
+::selection {
+  background-color: rgba(212, 175, 55, 0.3);
+  color: var(--color-champagne);
+}
+
+/* ─── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg-void);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 55, 0.5);
+}
+
+/* ─── Marquee animation ───────────────────────────────────────────────────── */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* ─── Gold glow utility ───────────────────────────────────────────────────── */
+.gold-glow {
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.3), 0 0 40px rgba(212, 175, 55, 0.1);
+}
+
+/* ─── Devanagari font rendering ───────────────────────────────────────────── */
+.font-devanagari {
+  font-family: var(--font-devanagari), var(--font-display), serif;
+  font-feature-settings: 'kern' 1;
+}
+
+/* ─── Safe area for mobile bottom bar ────────────────────────────────────── */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ─── Gradient text utility ───────────────────────────────────────────────── */
+.text-gradient-gold {
+  background: linear-gradient(135deg, #F5E6C8 0%, #D4AF37 50%, #F5E6C8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

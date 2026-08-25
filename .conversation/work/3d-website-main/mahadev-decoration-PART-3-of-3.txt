@@ -1,0 +1,198 @@
+════════════════════════════════════════════════════════════════
+MAHADEV DECORATION — PREMIUM 3D ANIMATED WEBSITE
+PART 3 of 3 — ADMIN DASHBOARD, HARDENING & FINAL DELIVERY
+════════════════════════════════════════════════════════════════
+
+INSTRUCTIONS FOR THE CODING AGENT:
+This is the final part of the same project (Part 1 = public site +
+design system, Part 2 = booking engine + database + customer
+dashboard). Do not redesign anything already built — reuse the same
+design tokens, component system, and database schema. This part adds
+the full admin/business-owner side of the platform, then finishes
+with hardening, structure, and a pre-launch checklist.
+
+────────────────────────────────────────────────────────────────
+ADMIN ACCESS
+────────────────────────────────────────────────────────────────
+/admin/login — separate, restricted login (never reachable via public
+sign-up; admin accounts are provisioned directly in Supabase/role
+table). All /admin/* routes are auth + role gated server-side, not
+just hidden client-side.
+
+────────────────────────────────────────────────────────────────
+ADMIN DASHBOARD OVERVIEW (/admin)
+────────────────────────────────────────────────────────────────
+Cards: Today's Events, Upcoming Events, Pending Inquiries, Confirmed
+Bookings, Total Revenue, Advance Received, Pending Payments, Monthly
+Growth — each pulling live data, each with a sensible loading
+skeleton, each clickable through to the relevant admin section.
+
+────────────────────────────────────────────────────────────────
+CALENDAR (/admin/calendar)
+────────────────────────────────────────────────────────────────
+Month / Week / Day views. Each event chip shows customer, event type,
+location, status — color-coded by status (reuse the same status→color
+mapping as <BookingTimeline/> from Part 2 so customer and admin views
+stay visually consistent). Clicking an event opens a detail side
+panel (not a full page navigation) with quick actions.
+
+────────────────────────────────────────────────────────────────
+BOOKING MANAGEMENT (/admin/bookings)
+────────────────────────────────────────────────────────────────
+Filterable/sortable table (DataTable component) of all booking
+requests/bookings. From a row or its detail panel, admin can: view
+full inquiry, contact customer (click-to-call/WhatsApp with number
+prefilled), edit booking details, change status (writes to
+booking_status_history, triggers any relevant customer notification),
+create/edit a quotation (see Quotation Manager below), assign team
+members, record a payment, upload event-day photos, add internal
+notes (never customer-visible unless explicitly marked so), and
+cancel a booking (with a required reason, logged to history).
+
+Quotation Manager (part of the booking detail panel): add/edit line
+items (description, quantity, unit price, discount), auto-computed
+total, set advance-required amount (auto-computes remaining), notes,
+terms, validity date, then Send to Customer (status → "Quote Sent").
+Reuses the same printable-PDF generation from Part 2.
+
+────────────────────────────────────────────────────────────────
+CUSTOMER MANAGEMENT (/admin/customers)
+────────────────────────────────────────────────────────────────
+Searchable customer list. Customer profile view: name, phone,
+WhatsApp, email, full booking history, total spending, events
+completed, internal admin notes.
+
+────────────────────────────────────────────────────────────────
+PAYMENT MANAGEMENT (/admin/payments)
+────────────────────────────────────────────────────────────────
+Overview of total expected revenue, total received, pending,
+overdue, and refunds, plus a full transaction table filterable by
+date, customer, payment status, and event type. Every figure here
+must be derived from the real payments table (Part 2), never
+hardcoded or estimated client-side.
+
+────────────────────────────────────────────────────────────────
+PORTFOLIO MANAGER (/admin/portfolio)
+────────────────────────────────────────────────────────────────
+Upload images and videos (including before/after pairs) into
+portfolio_items/portfolio_media (Part 2 schema). Per item: title,
+category, event type, location, price range, description, services
+included, featured toggle, SEO metadata (title/description/alt
+text), public/private toggle. This is what ultimately powers the
+Part 1 gallery/homepage sections, so changes here must reflect live
+on the public site without a redeploy.
+
+────────────────────────────────────────────────────────────────
+PACKAGE MANAGER (/admin/packages)
+────────────────────────────────────────────────────────────────
+Create/edit packages: starting price, inclusions list, images,
+featured toggle, active/inactive toggle. Powers the Part 1
+packages section/pages the same way.
+
+────────────────────────────────────────────────────────────────
+REVIEW MODERATION (/admin/reviews)
+────────────────────────────────────────────────────────────────
+Queue of submitted reviews: approve, reject, edit display settings,
+mark featured. Only approved reviews appear on the public /reviews
+page and homepage — enforce this via RLS/query filter, not just UI
+hiding.
+
+────────────────────────────────────────────────────────────────
+ANALYTICS (/admin/analytics)
+────────────────────────────────────────────────────────────────
+Recharts-based charts: monthly bookings, revenue over time, popular
+event categories, lead source breakdown, conversion rate (inquiry →
+confirmed), repeat-customer rate, pending-payment trends. All derived
+from real tables — label clearly if any metric is an estimate.
+
+────────────────────────────────────────────────────────────────
+SETTINGS (/admin/settings)
+────────────────────────────────────────────────────────────────
+Edit business_settings (phone, WhatsApp, address, hours, social
+links), manage service_areas (add/remove/edit the areas shown on the
+public Service Area section), manage team_members roster.
+
+────────────────────────────────────────────────────────────────
+ADMIN COMPONENT ADDITIONS
+────────────────────────────────────────────────────────────────
+AdminSidebar, AdminHeader, DataTable (sortable/filterable/paginated),
+plus reuse of Modal/Toast/ConfirmDialog/LoadingState/EmptyState/
+ErrorState from Part 1. Every destructive action (cancel booking,
+reject review, delete portfolio item) goes through ConfirmDialog —
+no silent deletes.
+
+────────────────────────────────────────────────────────────────
+FILE STRUCTURE
+────────────────────────────────────────────────────────────────
+Keep a clean, scalable structure across all three parts:
+app/               — routes (public, dashboard, admin)
+components/        — shared presentational components
+features/          — feature-scoped logic (booking, quotations,
+                     payments, portfolio, admin-*, etc.)
+lib/               — Supabase client, utilities, constants
+hooks/             — shared custom hooks
+types/             — shared TypeScript types (mirror DB schema)
+services/          — data-access layer (typed functions wrapping
+                     Supabase queries — this is what Part 1's
+                     "swap-in-later" data layer should now call)
+utils/             — pure helper functions
+supabase/          — migrations, RLS policies, edge functions
+public/            — static assets
+Keep business logic out of components; components stay presentational
+and call into services/features.
+
+────────────────────────────────────────────────────────────────
+BUILD ORDER (for reference — you are finishing phase 5 onward now)
+────────────────────────────────────────────────────────────────
+Phase 1: design system, brand identity, components (Part 1)
+Phase 2: public homepage, services, gallery, packages, contact
+         (Part 1)
+Phase 3: booking flow, database, Supabase integration (Part 2)
+Phase 4: authentication, customer dashboard (Part 2)
+Phase 5: admin dashboard — bookings, calendar, customers, payments,
+         portfolio manager (this part)
+Phase 6: animation/3D polish pass + performance optimization across
+         the whole site
+Phase 7: SEO, accessibility, and full testing pass
+
+────────────────────────────────────────────────────────────────
+CRITICAL DEVELOPMENT RULES (apply to the whole project, all 3 parts)
+────────────────────────────────────────────────────────────────
+- Never stop at mockup code — every flow must actually function
+- No dead buttons anywhere: every button navigates, opens a modal,
+  submits a form, or triggers its intended workflow
+- Never fake payments, booking confirmations, admin actions, or
+  database updates
+- Real loading, empty, error, and success states everywhere
+- Do not regress or redesign earlier parts while building this one —
+  only extend
+
+────────────────────────────────────────────────────────────────
+FINAL QUALITY CHECKLIST (verify before calling this complete)
+────────────────────────────────────────────────────────────────
+✓ Site looks premium and matches the reference hero image's mood
+✓ Mobile experience is fast, thumb-friendly, and equally premium
+✓ All navigation, filters, and modals work
+✓ Full booking flow works end-to-end against real Supabase data
+✓ Form validation works client- and server-side
+✓ Supabase schema, RLS, and relationships are correctly structured
+✓ Authentication (customer + admin) is secure and role-gated
+✓ Customer dashboard reflects real, live booking/payment data
+✓ Admin dashboard can fully manage bookings, portfolio, packages,
+  reviews, payments, and settings
+✓ Payment confirmation only ever happens via verified server/webhook
+  response, never client-side optimism
+✓ Images optimized, animations smooth on a mid-range Android phone
+✓ prefers-reduced-motion and no-WebGL fallbacks work correctly
+✓ Accessible: keyboard nav, focus states, ARIA labels, contrast
+✓ SEO metadata, structured data, and alt text present on every page
+✓ No placeholder buttons, no lorem ipsum, no "Test User" demo content
+  remaining anywhere in the production build
+
+────────────────────────────────────────────────────────────────
+END OF PROMPT (Part 3 of 3)
+────────────────────────────────────────────────────────────────
+Think like a real product team shipping a commercial platform, not
+like an AI generating a quick landing page. Build the foundation so
+this can later grow into a complete decoration-business operating
+system — this is not a basic portfolio site.

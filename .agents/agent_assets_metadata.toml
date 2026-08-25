@@ -1,0 +1,17 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "T5HXSl-QyYeIuLcDz5F2x"
+uri = "file://.conversation/attached_assets/mahadev-decoration-part-2-complete.zip"
+type = "unspecified"
+title = "Mahadev Decoration — Part 2 Complete"
+description = "Updated Next.js website with the multi-step booking flow, Supabase schema/API wiring, OTP login endpoint, customer dashboard entry point, success page, images, and environment setup."
+logical_id = "8a6c1c07-21fd-48d1-8dee-c770bb53e84a"
+content_hash = "sha256:cfa69f0fff08682d278810677980449d38b30fc9dfe8dc46960244d5ff48f6f6"
+size = 10879005
+mtime_ms = 1787648299759
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/conversation:199f1859-045e-4b06-a17e-ed24119fbd37/8a6c1c07-21fd-48d1-8dee-c770bb53e84a/cf89d169-b121-4494-8370-a9f365d83970"
+storage_version_token = "1787648306969225"
+content_type = "application/octet-stream"
+source_uri = "file://attached_assets/mahadev-decoration-part-2-complete.zip"
