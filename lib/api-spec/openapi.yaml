@@ -1,22 +1,21 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Mahadev Decoration business operations API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: bookings
+  - name: admin
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +23,207 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /booking-requests:
+    post:
+      operationId: createBookingRequest
+      tags: [bookings]
+      summary: Create a public booking inquiry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingRequestInput"
+      responses:
+        "201":
+          description: Booking inquiry created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingRequest"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /admin/summary:
+    get:
+      operationId: getAdminSummary
+      tags: [admin]
+      summary: Get live admin dashboard metrics
+      responses:
+        "200":
+          description: Current business metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSummary"
+  /admin/bookings:
+    get:
+      operationId: getAdminBookings
+      tags: [admin]
+      summary: List booking inquiries
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+          required: false
+      responses:
+        "200":
+          description: Booking inquiries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BookingRequest"
+  /admin/bookings/{id}/status:
+    patch:
+      operationId: updateBookingStatus
+      tags: [admin]
+      summary: Change booking status and record history
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingStatusUpdate"
+      responses:
+        "200":
+          description: Updated booking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingRequest"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/payments:
+    get:
+      operationId: getAdminPayments
+      tags: [admin]
+      summary: List recorded payment transactions
+      responses:
+        "200":
+          description: Payment ledger
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PaymentRecord"
+    post:
+      operationId: createAdminPayment
+      tags: [admin]
+      summary: Record a verified payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentInput"
+      responses:
+        "201":
+          description: Payment recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentRecord"
+        "400":
+          $ref: "#/components/responses/BadRequest"
 components:
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
   schemas:
     HealthStatus:
       type: object
       properties:
         status:
           type: string
-      required:
-        - status
-
+      required: [status]
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    BookingRequest:
+      type: object
+      properties:
+        id: { type: number }
+        customerName: { type: string }
+        phone: { type: string }
+        eventType: { type: string }
+        eventDate: { type: string, format: date }
+        venue: { type: string }
+        message: { type: ["string", "null"] }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, customerName, phone, eventType, eventDate, venue, status, createdAt, updatedAt]
+    BookingRequestInput:
+      type: object
+      properties:
+        customerName: { type: string, minLength: 2 }
+        phone: { type: string, minLength: 10 }
+        eventType: { type: string, minLength: 2 }
+        eventDate: { type: string, format: date }
+        venue: { type: string, minLength: 2 }
+        message: { type: ["string", "null"] }
+      required: [customerName, phone, eventType, eventDate, venue]
+    BookingStatusUpdate:
+      type: object
+      properties:
+        status: { type: string, minLength: 2 }
+        reason: { type: ["string", "null"] }
+      required: [status]
+    PaymentRecord:
+      type: object
+      properties:
+        id: { type: number }
+        bookingRequestId: { type: ["number", "null"] }
+        customerName: { type: string }
+        eventType: { type: string }
+        amount: { type: number }
+        status: { type: string }
+        paymentDate: { type: string, format: date-time }
+        notes: { type: ["string", "null"] }
+      required: [id, customerName, eventType, amount, status, paymentDate]
+    PaymentInput:
+      type: object
+      properties:
+        bookingRequestId: { type: ["number", "null"] }
+        customerName: { type: string, minLength: 2 }
+        eventType: { type: string, minLength: 2 }
+        amount: { type: number, minimum: 1 }
+        status: { type: string, minLength: 2 }
+        notes: { type: ["string", "null"] }
+      required: [customerName, eventType, amount, status]
+    AdminSummary:
+      type: object
+      properties:
+        todayEvents: { type: number }
+        upcomingEvents: { type: number }
+        pendingInquiries: { type: number }
+        confirmedBookings: { type: number }
+        totalRevenue: { type: number }
+        advanceReceived: { type: number }
+        pendingPayments: { type: number }
+        monthlyGrowth: { type: number }
+      required: [todayEvents, upcomingEvents, pendingInquiries, confirmedBookings, totalRevenue, advanceReceived, pendingPayments, monthlyGrowth]
