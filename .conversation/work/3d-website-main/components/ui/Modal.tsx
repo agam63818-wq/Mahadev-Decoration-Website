@@ -3,81 +3,73 @@
 import { useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
-import { cn } from '@/utils/cn'
 
 interface ModalProps {
   open: boolean
   onClose: () => void
+  title?: string
   children: React.ReactNode
   className?: string
-  title?: string
 }
 
-export function Modal({ open, onClose, children, className, title }: ModalProps) {
-  const overlayRef = useRef<HTMLDivElement>(null)
+export function Modal({ open, onClose, title, children, className = '' }: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null)
 
-  // Close on Escape
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [open, onClose])
-
-  // Lock body scroll
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
+      dialogRef.current?.focus()
     }
     return () => {
       document.body.style.overflow = ''
     }
   }, [open])
 
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    if (open) window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [open, onClose])
+
   return (
     <AnimatePresence>
       {open && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={title}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-        >
-          {/* Backdrop */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bg-void/70 backdrop-blur-sm">
           <motion.div
-            ref={overlayRef}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            className="absolute inset-0"
             onClick={onClose}
+            aria-hidden="true"
           />
-          {/* Panel */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-            className={cn(
-              'relative z-10 w-full max-w-4xl max-h-[90vh] overflow-y-auto',
-              'bg-bg-purple border border-gold/20 rounded-2xl shadow-card-lift',
-              className
-            )}
+          <div
+            ref={dialogRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={title ? 'modal-title' : undefined}
+            className={`relative w-full max-w-lg bg-bg-void border border-gold/20 rounded-2xl shadow-card-lift p-6 animate-in fade-in zoom-in-95 duration-200 ${className}`}
           >
-            <button
-              onClick={onClose}
-              aria-label="बंद करें"
-              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/40 text-text-muted hover:text-gold hover:bg-black/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
-            >
-              <X size={20} />
-            </button>
+            {title && (
+              <div className="flex items-center justify-between mb-5">
+                <h2 id="modal-title" className="text-xl font-display font-semibold text-gold font-devanagari">
+                  {title}
+                </h2>
+                <button
+                  onClick={onClose}
+                  className="p-1.5 rounded-lg hover:bg-gold/10 text-text-muted hover:text-gold transition-colors"
+                  aria-label="बंद करें"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            )}
             {children}
-          </motion.div>
+          </div>
         </div>
       )}
     </AnimatePresence>

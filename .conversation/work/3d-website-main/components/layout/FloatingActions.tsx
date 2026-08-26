@@ -1,6 +1,6 @@
 'use client'
 
-import { MessageCircle, Phone } from 'lucide-react'
+import { MessageCircle, Phone, Calendar } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { businessSettings } from '@/lib/data'
 import { buildWhatsAppUrl } from '@/utils/booking'
@@ -13,36 +13,37 @@ export function FloatingActions() {
 
   return (
     <>
-      {/* Desktop floating buttons */}
+      {/* Desktop floating buttons — premium stacked */}
       <div className="hidden md:flex fixed bottom-6 left-6 z-30 flex-col gap-3" aria-label="त्वरित संपर्क">
-        {/* WhatsApp */}
+        {/* WhatsApp button */}
         <a
           href={whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
           aria-label="WhatsApp पर संपर्क करें"
           className={cn(
-            'flex items-center gap-2 px-4 py-3 rounded-full',
-            'bg-[#25D366] text-white font-medium text-sm',
-            'shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-250',
-            'animate-pulse-gold',
+            'flex items-center gap-2.5 px-5 py-3.5 rounded-full',
+            'bg-[#25D366] text-white font-medium text-sm shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/30 hover:scale-105 transition-all duration-250',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2 focus-visible:ring-offset-bg-void'
           )}
+          style={{
+            background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
+          }}
         >
           <MessageCircle size={18} />
-          <span>WhatsApp</span>
+          <span>WhatsApp करें</span>
         </a>
-      </div>
 
-      <div className="hidden md:flex fixed bottom-6 right-6 z-30">
-        {/* Call Now */}
+        {/* Small decorative divider */}
+        <div className="w-0.5 h-6 bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
+
+        {/* Call Now button — premium gold */}
         <a
           href={`tel:${businessSettings.phone}`}
           aria-label={`अभी कॉल करें: ${businessSettings.phone}`}
           className={cn(
-            'flex items-center gap-2 px-4 py-3 rounded-full',
-            'bg-gold text-bg-void font-semibold text-sm',
-            'shadow-gold-glow hover:shadow-gold-glow hover:scale-105 transition-all duration-250',
+            'flex items-center gap-2.5 px-5 py-3.5 rounded-full',
+            'bg-gradient-to-r from-gold-warm to-gold text-bg-void font-semibold text-sm shadow-lg shadow-gold/20 hover:shadow-xl hover:shadow-gold/30 hover:scale-105 transition-all duration-250',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-bg-void'
           )}
         >
@@ -51,51 +52,88 @@ export function FloatingActions() {
         </a>
       </div>
 
-      {/* Mobile sticky bottom action bar */}
-      <MobileActionBar />
+      {/* Right-side floating bar (alternative desktop layout) */}
+      <div className="hidden md:flex fixed bottom-6 right-6 z-30">
+        {/* Scroll-to-top premium */}
+        <ScrollToTopButton />
+      </div>
+
+      {/* Mobile sticky bottom action bar — premium */}
+      <MobileActionBar whatsappUrl={whatsappUrl} />
     </>
   )
 }
 
-function MobileActionBar() {
-  const whatsappUrl = buildWhatsAppUrl(
-    businessSettings.whatsapp,
-    `नमस्ते! मुझे महादेव डेकोरेशन के बारे में जानकारी चाहिए।`
+function ScrollToTopButton() {
+  return (
+    <a
+      href="#home"
+      className="hidden md:block w-11 h-11 rounded-full bg-gradient-to-br from-gold/20 to-gold/5 border border-gold/30 text-gold shadow-lg shadow-gold/10 hover:shadow-xl hover:shadow-gold/20 hover:border-gold hover:scale-105 transition-all duration-250 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+      aria-label="ऊपर जाएं"
+      onClick={(e) => {
+        e.preventDefault()
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }}
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="18 15 12 9 6 15" />
+      </svg>
+    </a>
   )
+}
 
+function MobileActionBar({ whatsappUrl }: { whatsappUrl: string }) {
   return (
     <div
       className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-bg-void/95 backdrop-blur-md border-t border-gold/20 safe-area-pb"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       aria-label="मोबाइल एक्शन बार"
     >
-      <div className="flex items-stretch h-14">
+      {/* Top gold accent */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
+
+      <div className="flex items-stretch h-14 px-2">
+        {/* Call */}
         <a
           href={`tel:${businessSettings.phone}`}
           aria-label={`कॉल करें: ${businessSettings.phone}`}
-          className="flex-1 flex flex-col items-center justify-center gap-0.5 text-text-muted hover:text-gold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+          className="flex-1 flex flex-col items-center justify-center gap-0.5 text-text-muted hover:text-gold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold rounded-lg"
         >
-          <Phone size={18} />
-          <span className="text-xs">कॉल</span>
+          <div className="w-8 h-8 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center">
+            <Phone size={16} className="text-gold" />
+          </div>
+          <span className="text-[10px] font-devanagari">कॉल</span>
         </a>
-        <div className="w-px bg-gold/10" />
+
+        {/* Divider */}
+        <div className="w-px bg-gold/10 my-2" />
+
+        {/* WhatsApp */}
         <a
           href={whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
           aria-label="WhatsApp पर संपर्क करें"
-          className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[#25D366] hover:text-[#20BA5A] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]"
+          className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[#25D366] hover:text-[#20BA5A] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] rounded-lg"
         >
-          <MessageCircle size={18} />
-          <span className="text-xs">WhatsApp</span>
+          <div className="w-8 h-8 rounded-full bg-[#25D366]/10 border border-[#25D366]/30 flex items-center justify-center">
+            <MessageCircle size={16} />
+          </div>
+          <span className="text-[10px] font-devanagari">WhatsApp</span>
         </a>
-        <div className="w-px bg-gold/10" />
+
+        {/* Divider */}
+        <div className="w-px bg-gold/10 my-2" />
+
+        {/* Book Now — primary gold */}
         <a
           href="/booking"
-          className="flex-1 flex flex-col items-center justify-center gap-0.5 bg-gold text-bg-void font-semibold hover:bg-gold-light transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+          className="flex-1 flex flex-col items-center justify-center gap-0.5 bg-gradient-to-r from-gold-warm to-gold text-bg-void font-semibold hover:scale-[1.02] hover:shadow-lg hover:shadow-gold/20 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold rounded-lg"
         >
-          <span className="text-base">📅</span>
-          <span className="text-xs font-devanagari">बुकिंग</span>
+          <div className="w-8 h-8 rounded-full bg-bg-void/20 border border-bg-void/20 flex items-center justify-center">
+            <Calendar size={16} className="text-bg-void" />
+          </div>
+          <span className="text-[10px] font-devanagari">बुकिंग</span>
         </a>
       </div>
     </div>
