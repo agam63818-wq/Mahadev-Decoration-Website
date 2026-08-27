@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -12,6 +14,7 @@ import {
   BarChart3,
   Settings,
   LogOut,
+  Loader2,
   ChevronDown,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -20,6 +23,9 @@ import { cn } from '@/utils/cn'
 interface AdminSidebarProps {
   collapsed?: boolean
   onToggle?: () => void
+  /** Real Supabase sign-out, provided by AdminShell. */
+  onLogout?: () => void
+  loggingOut?: boolean
 }
 
 const navItems = [
@@ -35,8 +41,13 @@ const navItems = [
   { href: '/admin/settings', label: 'सेटिंग्स', icon: Settings, labelHindi: 'सेटिंग्स' },
 ]
 
-export function AdminSidebar({ collapsed = false, onToggle }: AdminSidebarProps) {
-  const pathname = usePathname()
+export function AdminSidebar({
+  collapsed = false,
+  onToggle,
+  onLogout,
+  loggingOut = false,
+}: AdminSidebarProps) {
+  const pathname = usePathname() ?? ''
 
   return (
     <aside
@@ -112,6 +123,21 @@ export function AdminSidebar({ collapsed = false, onToggle }: AdminSidebarProps)
           <Settings size={20} className="flex-shrink-0" />
           {!collapsed && <span className="whitespace-nowrap font-devanagari">सेटिंग्स</span>}
         </Link>
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            disabled={loggingOut}
+            title="लॉग आउट"
+            className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-text-muted hover:bg-white/5 hover:text-gold transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {loggingOut ? (
+              <Loader2 size={20} className="flex-shrink-0 animate-spin" />
+            ) : (
+              <LogOut size={20} className="flex-shrink-0" />
+            )}
+            {!collapsed && <span className="whitespace-nowrap font-devanagari">लॉग आउट</span>}
+          </button>
+        )}
         <button
           onClick={onToggle}
           className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-text-muted hover:bg-white/5 hover:text-gold transition-all duration-200"

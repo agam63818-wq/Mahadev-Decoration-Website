@@ -7,10 +7,8 @@ import {
   Users,
   Phone,
   Mail,
-  Globe,
   Calendar,
   DollarSign,
-  FileText,
   MoreVertical,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'

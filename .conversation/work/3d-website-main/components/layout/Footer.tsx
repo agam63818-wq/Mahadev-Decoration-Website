@@ -1,7 +1,9 @@
+'use client'
+
 import Link from 'next/link'
 import { Phone, Mail, MapPin, Instagram, Facebook, Youtube } from 'lucide-react'
 import { Sparkles, Star } from 'lucide-react'
-import { businessSettings } from '@/lib/data'
+import { useBusinessSettings } from '@/components/providers/BusinessSettingsProvider'
 
 const footerLinks = {
   pages: [
@@ -24,6 +26,11 @@ const footerLinks = {
 }
 
 export function Footer() {
+  // Single source of truth: business_settings (admin editable at /admin/settings).
+  const businessSettings = useBusinessSettings()
+  const whatsappHref = businessSettings.socialLinks?.whatsapp
+    || (businessSettings.whatsapp ? `https://wa.me/91${businessSettings.whatsapp.replace(/\D/g, '').replace(/^91/, '')}` : '')
+
   return (
     <footer className="relative bg-gradient-to-b from-bg-void to-bg-void-2 border-t border-gold/10 overflow-hidden" aria-label="फुटर">
       {/* Premium top accent line */}
@@ -80,7 +87,8 @@ export function Footer() {
 
             {/* Tagline */}
             <p className="text-text-muted text-sm leading-relaxed mb-5 font-devanagari">
-              {businessSettings.tagline} — बेगूसराय और आसपास के क्षेत्रों में प्रीमियम डेकोरेशन सर्विस।
+              {businessSettings.tagline}
+              {businessSettings.city ? ` — ${businessSettings.city} और आसपास के क्षेत्रों में प्रीमियम डेकोरेशन सर्विस।` : ' — प्रीमियम डेकोरेशन सर्विस।'}
             </p>
 
             {/* Premium stats — trust builders */}
@@ -103,9 +111,9 @@ export function Footer() {
 
             {/* Social links — premium circle */}
             <div className="flex items-center gap-2.5">
-              {businessSettings.socialLinks.instagram && (
+              {businessSettings.socialLinks?.instagram && (
                 <a
-                  href={businessSettings.socialLinks.instagram}
+                  href={businessSettings.socialLinks?.instagram}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Instagram पर फॉलो करें"
@@ -114,9 +122,9 @@ export function Footer() {
                   <Instagram size={16} />
                 </a>
               )}
-              {businessSettings.socialLinks.facebook && (
+              {businessSettings.socialLinks?.facebook && (
                 <a
-                  href={businessSettings.socialLinks.facebook}
+                  href={businessSettings.socialLinks?.facebook}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Facebook पर फॉलो करें"
@@ -125,9 +133,9 @@ export function Footer() {
                   <Facebook size={16} />
                 </a>
               )}
-              {businessSettings.socialLinks.youtube && (
+              {businessSettings.socialLinks?.youtube && (
                 <a
-                  href={businessSettings.socialLinks.youtube}
+                  href={businessSettings.socialLinks?.youtube}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="YouTube पर सब्सक्राइब करें"
@@ -186,6 +194,7 @@ export function Footer() {
               संपर्क करें
             </h3>
             <ul className="space-y-3">
+              {businessSettings.phone && (
               <li className="group">
                 <a
                   href={`tel:${businessSettings.phone}`}
@@ -197,6 +206,8 @@ export function Footer() {
                   <span className="font-devanagari font-medium">{businessSettings.phone}</span>
                 </a>
               </li>
+              )}
+              {businessSettings.email && (
               <li className="group">
                 <a
                   href={`mailto:${businessSettings.email}`}
@@ -208,24 +219,31 @@ export function Footer() {
                   <span className="font-devanagari">{businessSettings.email}</span>
                 </a>
               </li>
+              )}
+              {businessSettings.addressHindi && (
               <li className="flex items-start gap-2.5 text-text-muted text-sm group">
                 <div className="w-8 h-8 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:border-gold/40 transition-all">
                   <MapPin size={13} className="text-gold" />
                 </div>
                 <span>{businessSettings.addressHindi}</span>
               </li>
-              {/* WhatsApp quick link */}
-              <a
-                href={businessSettings.socialLinks.whatsapp}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#25D366] to-[#128C7E] text-white text-sm font-devanagari hover:scale-[1.02] hover:shadow-lg hover:shadow-emerald-500/20 transition-all duration-200"
-              >
-                <MessageCircle size={14} />
-                WhatsApp करें
-              </a>
-            </li>
-          </ul>
+              )}
+              {/* WhatsApp quick link — only when a number is configured */}
+              {whatsappHref && (
+              <li>
+                <a
+                  href={whatsappHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#25D366] to-[#128C7E] text-white text-sm font-devanagari hover:scale-[1.02] hover:shadow-lg hover:shadow-emerald-500/20 transition-all duration-200"
+                >
+                  <MessageCircle size={14} />
+                  WhatsApp करें
+                </a>
+              </li>
+              )}
+            </ul>
+          </div>
         </div>
       </div>
 

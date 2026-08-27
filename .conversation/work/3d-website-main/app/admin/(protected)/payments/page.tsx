@@ -4,19 +4,17 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   DollarSign,
-  TrendingUp,
   Clock,
   CheckCircle2,
   XCircle,
   AlertTriangle,
-  RefreshCw,
   Download,
   Filter,
   MoreVertical,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
+import { Badge, type BadgeVariant } from '@/components/ui/Badge'
 import { DataTable } from '@/components/ui/DataTable'
 
 interface Payment {
@@ -42,7 +40,7 @@ const samplePayments: Payment[] = [
   { id: 'PMT-008', customerId: 'C-008', bookingId: 'BK-008', customerName: 'किरण देवी', amount: 30000, method: 'Razorpay', status: 'refunded', date: '2024-11-19', transactionId: 'TXN123463' },
 ]
 
-const statusConfig = {
+const statusConfig: Record<string, { label: string; color: BadgeVariant }> = {
   completed: { label: 'पूर्ण', color: 'success' },
   pending: { label: 'लंबित', color: 'warning' },
   failed: { label: 'failed', color: 'danger' },
@@ -137,7 +135,7 @@ export default function AdminPaymentsPage() {
           { label: 'लंबित (Pending)', value: `₹${stats.pendingAmt.toLocaleString()}`, icon: Clock, color: 'from-amber-400 to-amber-600' },
           { label: 'failed', value: `₹${stats.failedAmt.toLocaleString()}`, icon: XCircle, color: 'from-rose-400 to-rose-600' },
           { label: 'वापसी (Refunds)', value: `₹${stats.refundedAmt.toLocaleString()}`, icon: AlertTriangle, color: 'from-blue-400 to-blue-600' },
-        ].map((stat, i) => (
+        ].map((stat) => (
           <Card key={stat.label} variant="outline">
             <div className="p-4">
               <div className="flex items-center justify-between mb-3">

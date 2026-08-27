@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight, MessageCircle, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { StatBadge } from '@/components/ui/StatBadge'
-import { heroStats, businessSettings } from '@/lib/data'
+import { heroStats } from '@/lib/data'
+import { useBusinessSettings, useContactAvailability } from '@/components/providers/BusinessSettingsProvider'
 import { buildWhatsAppUrl } from '@/utils/booking'
 
 // ─── Hero images ──────────────────────────────────────────────────────────────
@@ -28,9 +29,11 @@ const heroImages = [
 export function HeroSection() {
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
-  const imageRef = useRef<HTMLDivElement>(null)
+  // Live from business_settings.
+  const businessSettings = useBusinessSettings()
+  const { whatsapp, hasWhatsapp } = useContactAvailability()
   const whatsappUrl = buildWhatsAppUrl(
-    businessSettings.whatsapp,
+    whatsapp,
     'नमस्ते! मुझे डेकोरेशन बुकिंग के बारे में जानकारी चाहिए।'
   )
 
@@ -170,6 +173,7 @@ export function HeroSection() {
               >
                 हमारा काम देखें <span className="text-gold-dim text-sm font-normal">↓</span>
               </Button>
+              {hasWhatsapp && (
               <a
                 href={whatsappUrl}
                 target="_blank"
@@ -179,6 +183,7 @@ export function HeroSection() {
                 <MessageCircle size={18} />
                 <span className="font-devanagari">WhatsApp करें</span>
               </a>
+              )}
             </motion.div>
           </div>
 

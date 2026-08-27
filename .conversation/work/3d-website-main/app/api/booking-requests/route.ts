@@ -10,6 +10,12 @@ const requestSchema = z.object({
   name: z.string().min(2).max(100), phone: z.string().regex(/^[0-9+\-\s()]{10,20}$/),
   whatsapp: z.string().optional(), email: z.string().email().optional().or(z.literal('')),
   referenceFiles: z.array(z.string()).max(10).optional(),
+  // PART A: the specific priced gallery look the customer chose. A uuid so a
+  // hand-crafted payload can't smuggle arbitrary text into the FK column.
+  selectedPortfolioMediaId: z.string().uuid().optional(),
+  portfolioItemId: z.string().optional(),
+  selectedVariantLabel: z.string().max(120).optional(),
+  selectedPrice: z.coerce.number().nonnegative().optional(),
 })
 
 function supabaseConfig() {
@@ -34,6 +40,9 @@ export async function POST(request: Request) {
     requirements: parsed.data.requirements, reference_files: parsed.data.referenceFiles ?? [],
     contact_name: parsed.data.name, contact_phone: parsed.data.phone,
     contact_whatsapp: parsed.data.whatsapp, contact_email: parsed.data.email || null,
+    // Null (not omitted) when no design was picked, so the admin UI can simply
+    // check for a value and hide the "selected design" block entirely.
+    selected_portfolio_media_id: parsed.data.selectedPortfolioMediaId ?? null,
   }
   const response = await fetch(`${url}/rest/v1/booking_requests`, {
     method: 'POST', headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },

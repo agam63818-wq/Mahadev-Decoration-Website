@@ -8,14 +8,20 @@ export const businessSettings: BusinessSettings = {
   businessNameHindi: 'महादेव डेकोरेशन',
   tagline: 'हर खुशी को बनाएं यादगार',
   taglineSecondary: 'आपकी खुशी, हमारी पहचान',
-  phone: '7091514078',
-  whatsapp: '917091514078',
-  email: 'info@mahadevdecoration.com',
-  address: 'Begusarai, Bihar',
-  addressHindi: 'बेगूसराय, बिहार',
-  city: 'Begusarai',
-  state: 'Bihar',
-  pincode: '851101',
+  // ⚠️ Contact details are intentionally EMPTY.
+  // A fake-looking phone number or address undermines the "serious premium
+  // brand" trust the site is built to convey, so nothing is invented here.
+  // These are filled in by the admin at /admin/settings, which writes to the
+  // business_settings table — the single source of truth for the whole site.
+  // Until then the UI hides contact CTAs and shows "पता जोड़ें" style prompts.
+  phone: '',
+  whatsapp: '',
+  email: '',
+  address: '',
+  addressHindi: '',
+  city: '',
+  state: '',
+  pincode: '',
   businessHours: [
     { day: 'Monday', dayHindi: 'सोमवार', open: '09:00', close: '20:00', isClosed: false },
     { day: 'Tuesday', dayHindi: 'मंगलवार', open: '09:00', close: '20:00', isClosed: false },
@@ -25,14 +31,10 @@ export const businessSettings: BusinessSettings = {
     { day: 'Saturday', dayHindi: 'शनिवार', open: '09:00', close: '21:00', isClosed: false },
     { day: 'Sunday', dayHindi: 'रविवार', open: '10:00', close: '18:00', isClosed: false },
   ],
-  socialLinks: {
-    instagram: 'https://instagram.com/mahadevdecoration',
-    facebook: 'https://facebook.com/mahadevdecoration',
-    youtube: 'https://youtube.com/@mahadevdecoration',
-    whatsapp: 'https://wa.me/917091514078',
-  },
-  mapEmbedUrl:
-    'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d57960.12345678!2d86.1234567!3d25.4234567!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39f0e0000000001%3A0x0!2sBegusarai%2C%20Bihar!5e0!3m2!1sen!2sin!4v1234567890',
+  // Also empty — links are added by the admin, and social_links is an open
+  // key-value map so new platforms need no code change.
+  socialLinks: {},
+  mapEmbedUrl: '',
 }
 
 // ─── Hero Stats (vertical rail — exactly 3 as per spec) ───────────────────────
@@ -205,7 +207,7 @@ export const teamMembers: TeamMember[] = [
     role: 'Founder & Head Decorator',
     roleHindi: 'संस्थापक और मुख्य डेकोरेटर',
     bio: '5+ वर्षों के अनुभव के साथ, महादेव कुमार ने बेगूसराय में डेकोरेशन की दुनिया में एक नई पहचान बनाई है। उनकी टीम ने 1500+ इवेंट्स को यादगार बनाया है।',
-    photoUrl: '/images/team/owner.jpg',
+    photoUrl: '',
     photoAlt: 'महादेव कुमार — संस्थापक, महादेव डेकोरेशन',
     yearsExperience: 5,
   },
@@ -215,7 +217,7 @@ export const teamMembers: TeamMember[] = [
     role: 'Senior Decorator',
     roleHindi: 'वरिष्ठ डेकोरेटर',
     bio: 'वेडिंग और स्टेज डेकोरेशन में विशेषज्ञ। 3+ वर्षों का अनुभव।',
-    photoUrl: '/images/team/rajesh.jpg',
+    photoUrl: '',
     photoAlt: 'राजेश कुमार — वरिष्ठ डेकोरेटर',
     yearsExperience: 3,
   },
@@ -225,7 +227,7 @@ export const teamMembers: TeamMember[] = [
     role: 'Floral Designer',
     roleHindi: 'फ्लोरल डिजाइनर',
     bio: 'फूलों की सजावट में माहिर। हल्दी, मेहंदी और फ्लोरल थीम की विशेषज्ञ।',
-    photoUrl: '/images/team/sunita.jpg',
+    photoUrl: '',
     photoAlt: 'सुनीता देवी — फ्लोरल डिजाइनर',
     yearsExperience: 4,
   },

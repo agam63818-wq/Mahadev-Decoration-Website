@@ -2,12 +2,16 @@
 
 import { MessageCircle, Phone, Calendar } from 'lucide-react'
 import { cn } from '@/utils/cn'
-import { businessSettings } from '@/lib/data'
 import { buildWhatsAppUrl } from '@/utils/booking'
+import { useContactAvailability } from '@/components/providers/BusinessSettingsProvider'
 
 export function FloatingActions() {
+  // Live values from business_settings. A CTA whose number the admin hasn't
+  // filled in yet is hidden rather than rendered as a dead tel:/wa.me link.
+  const { phone, whatsapp, hasPhone, hasWhatsapp } = useContactAvailability()
+
   const whatsappUrl = buildWhatsAppUrl(
-    businessSettings.whatsapp,
+    whatsapp,
     `नमस्ते! मुझे महादेव डेकोरेशन के बारे में जानकारी चाहिए।`
   )
 
@@ -15,7 +19,8 @@ export function FloatingActions() {
     <>
       {/* Desktop floating buttons — premium stacked */}
       <div className="hidden md:flex fixed bottom-6 left-6 z-30 flex-col gap-3" aria-label="त्वरित संपर्क">
-        {/* WhatsApp button */}
+        {/* WhatsApp button — only when a number is configured */}
+        {hasWhatsapp && (
         <a
           href={whatsappUrl}
           target="_blank"
@@ -33,14 +38,18 @@ export function FloatingActions() {
           <MessageCircle size={18} />
           <span>WhatsApp करें</span>
         </a>
+        )}
 
         {/* Small decorative divider */}
-        <div className="w-0.5 h-6 bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
+        {hasWhatsapp && hasPhone && (
+          <div className="w-0.5 h-6 bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
+        )}
 
         {/* Call Now button — premium gold */}
+        {hasPhone && (
         <a
-          href={`tel:${businessSettings.phone}`}
-          aria-label={`अभी कॉल करें: ${businessSettings.phone}`}
+          href={`tel:${phone}`}
+          aria-label={`अभी कॉल करें: ${phone}`}
           className={cn(
             'flex items-center gap-2.5 px-5 py-3.5 rounded-full',
             'bg-gradient-to-r from-gold-warm to-gold text-bg-void font-semibold text-sm shadow-lg shadow-gold/20 hover:shadow-xl hover:shadow-gold/30 hover:scale-105 transition-all duration-250',
@@ -50,6 +59,7 @@ export function FloatingActions() {
           <Phone size={18} />
           <span>अभी कॉल करें</span>
         </a>
+        )}
       </div>
 
       {/* Right-side floating bar (alternative desktop layout) */}
@@ -83,6 +93,9 @@ function ScrollToTopButton() {
 }
 
 function MobileActionBar({ whatsappUrl }: { whatsappUrl: string }) {
+  // Same single source of truth as the desktop buttons: business_settings.
+  const { phone, hasPhone, hasWhatsapp } = useContactAvailability()
+
   return (
     <div
       className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-bg-void/95 backdrop-blur-md border-t border-gold/20 safe-area-pb"
@@ -93,10 +106,11 @@ function MobileActionBar({ whatsappUrl }: { whatsappUrl: string }) {
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
 
       <div className="flex items-stretch h-14 px-2">
-        {/* Call */}
+        {/* Call — hidden until the admin adds a phone number */}
+        {hasPhone && (
         <a
-          href={`tel:${businessSettings.phone}`}
-          aria-label={`कॉल करें: ${businessSettings.phone}`}
+          href={`tel:${phone}`}
+          aria-label={`कॉल करें: ${phone}`}
           className="flex-1 flex flex-col items-center justify-center gap-0.5 text-text-muted hover:text-gold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold rounded-lg"
         >
           <div className="w-8 h-8 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center">
@@ -104,11 +118,13 @@ function MobileActionBar({ whatsappUrl }: { whatsappUrl: string }) {
           </div>
           <span className="text-[10px] font-devanagari">कॉल</span>
         </a>
+        )}
 
         {/* Divider */}
-        <div className="w-px bg-gold/10 my-2" />
+        {hasPhone && hasWhatsapp && <div className="w-px bg-gold/10 my-2" />}
 
-        {/* WhatsApp */}
+        {/* WhatsApp — hidden until the admin adds a WhatsApp number */}
+        {hasWhatsapp && (
         <a
           href={whatsappUrl}
           target="_blank"
@@ -121,9 +137,10 @@ function MobileActionBar({ whatsappUrl }: { whatsappUrl: string }) {
           </div>
           <span className="text-[10px] font-devanagari">WhatsApp</span>
         </a>
+        )}
 
         {/* Divider */}
-        <div className="w-px bg-gold/10 my-2" />
+        {(hasPhone || hasWhatsapp) && <div className="w-px bg-gold/10 my-2" />}
 
         {/* Book Now — primary gold */}
         <a

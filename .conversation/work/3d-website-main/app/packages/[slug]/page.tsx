@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Check, Clock, Maximize2, Sparkles } from 'lucide-react'
 import { getPackageBySlug, getAllPackages } from '@/services/packages'
-import { buildBookingUrl, formatPrice } from '@/utils/booking'
+import { buildBookingUrl, buildWhatsAppUrl, formatPrice } from '@/utils/booking'
+import { getBusinessSettings } from '@/services/business'
 import { SectionFlourish } from '@/components/ui/SectionFlourish'
 
 interface Props {
@@ -38,6 +39,12 @@ export default async function PackageDetailPage({ params }: Props) {
     packageId: pkg.id,
     sourceName: pkg.nameEn,
   })
+
+  // WhatsApp number comes from business_settings, never hardcoded.
+  const business = await getBusinessSettings()
+  const whatsappUrl = business.whatsapp
+    ? buildWhatsAppUrl(business.whatsapp, `नमस्ते! मुझे ${pkg.name} पैकेज के बारे में जानकारी चाहिए।`)
+    : ''
 
   return (
     <div className="min-h-screen bg-bg-void pt-20">
@@ -103,14 +110,16 @@ export default async function PackageDetailPage({ params }: Props) {
               >
                 Customize Package
               </Link>
-              <a
-                href={`https://wa.me/917091514078?text=${encodeURIComponent(`नमस्ते! मुझे ${pkg.name} पैकेज के बारे में जानकारी चाहिए।`)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full text-center py-4 rounded-xl border border-gold/30 text-text-muted hover:border-gold hover:text-gold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold font-devanagari"
-              >
-                WhatsApp पर पूछें
-              </a>
+              {whatsappUrl && (
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full text-center py-4 rounded-xl border border-gold/30 text-text-muted hover:border-gold hover:text-gold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold font-devanagari"
+                >
+                  WhatsApp पर पूछें
+                </a>
+              )}
             </div>
           </div>
         </div>

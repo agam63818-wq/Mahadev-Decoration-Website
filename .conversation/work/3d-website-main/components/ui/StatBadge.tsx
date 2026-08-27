@@ -15,7 +15,7 @@ interface StatBadgeProps {
   className?: string
 }
 
-const variantStyles: Record<StatBadgeProps['variant'], string> = {
+const variantStyles: Record<NonNullable<StatBadgeProps['variant']>, string> = {
   rail:
     'bg-bg-void/80 border border-gold/15 rounded-xl px-3 py-3 hover:bg-bg-void/90 hover:border-gold/25 transition-all duration-200',
   bar:
@@ -26,7 +26,7 @@ const variantStyles: Record<StatBadgeProps['variant'], string> = {
     'flex items-center gap-3 bg-bg-void/70 border border-gold/10 rounded-xl px-4 py-3 hover:border-gold/25 transition-all duration-200',
 }
 
-export function StatBadge({ stat, variant = 'bar', index = 0, compact, className }: StatBadgeProps) {
+export function StatBadge({ stat, variant = 'bar', index = 0, className }: StatBadgeProps) {
   const delay = index * 0.1
 
   return (

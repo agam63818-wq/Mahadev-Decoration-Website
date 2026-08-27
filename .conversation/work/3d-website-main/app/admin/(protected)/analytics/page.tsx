@@ -14,6 +14,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from 'lucide-react'
+import { Badge } from '@/components/ui/Badge'
 
 // Simple SVG-based chart component to avoid heavy deps
 function BarChart({
@@ -200,8 +201,8 @@ export default function AdminAnalyticsPage() {
           </div>
           <BarChart data={monthlyBookings} color="from-gold to-gold-light" height={200} />
           <div className="flex justify-between mt-4 text-xs text-text-muted">
-            <span>{min(monthlyBookings.map((m) => m.value))} (न्यूनतम)</span>
-            <span>{max(monthlyBookings.map((m) => m.value))} (अधिकतम)</span>
+            <span>{Math.min(...monthlyBookings.map((m) => m.value))} (न्यूनतम)</span>
+            <span>{Math.max(...monthlyBookings.map((m) => m.value))} (अधिकतम)</span>
             <span>{avgBooking} (औसत)</span>
           </div>
         </div>

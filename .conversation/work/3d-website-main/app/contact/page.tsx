@@ -6,7 +6,7 @@ import { ContactPageClient } from '@/features/contact/ContactPageClient'
 export const metadata: Metadata = {
   title: 'संपर्क करें — महादेव डेकोरेशन',
   description:
-    'महादेव डेकोरेशन से संपर्क करें — फोन: 7091514078, WhatsApp, या ऑनलाइन फॉर्म। बेगूसराय, बिहार।',
+    'महादेव डेकोरेशन से संपर्क करें — फोन, WhatsApp, या ऑनलाइन फॉर्म से अपनी बुकिंग शुरू करें।',
   openGraph: {
     title: 'संपर्क करें | महादेव डेकोरेशन',
     description: 'फोन, WhatsApp, या ऑनलाइन फॉर्म से संपर्क करें',

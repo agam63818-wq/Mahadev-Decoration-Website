@@ -9,7 +9,6 @@ import {
   Clock,
   MapPin,
   Users,
-  MoreVertical,
   CheckCircle2,
   XCircle,
   Edit,
@@ -94,11 +93,6 @@ export default function AdminCalendarPage() {
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
   const days = generateCalendarDays(year, month)
-  const eventsForMonth = sampleEvents.filter((e) => e.date.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`))
-
-  const weekStart = new Date(year, month, 1)
-  const weekEnd = new Date(year, month, 30)
-
   const goToPrev = () => {
     if (viewMode === 'month') setCurrentDate(new Date(year, month - 1, 1))
     else if (viewMode === 'week') setCurrentDate(new Date(currentDate.getTime() - 7 * 24 * 60 * 60 * 1000))
