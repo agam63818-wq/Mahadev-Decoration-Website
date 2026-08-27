@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
 import type { PortfolioItem, EventType } from '@/types'
+import { isBookableLook } from '@/types'
+import { LooksGallery } from '@/features/gallery/LooksGallery'
 import { buildBookingUrl } from '@/utils/booking'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -33,7 +35,6 @@ export function GalleryPageClient({ items }: GalleryPageClientProps) {
   const typeParam = searchParams.get('type') as EventType | null
   const [activeFilter, setActiveFilter] = useState<EventType | 'all'>(typeParam ?? 'all')
   const [selectedItem, setSelectedItem] = useState<PortfolioItem | null>(null)
-  const [activeImage, setActiveImage] = useState(0)
 
   useEffect(() => {
     if (typeParam) setActiveFilter(typeParam)
@@ -90,11 +91,11 @@ export function GalleryPageClient({ items }: GalleryPageClientProps) {
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.35, delay: (i % 8) * 0.04 }}
                   className="group relative overflow-hidden rounded-xl cursor-pointer border border-gold/10 hover:border-gold/40 transition-colors"
-                  onClick={() => { setSelectedItem(item); setActiveImage(0) }}
+                  onClick={() => setSelectedItem(item)}
                   role="button"
                   tabIndex={0}
                   aria-label={`${item.title} देखें`}
-                  onKeyDown={(e) => e.key === 'Enter' && (setSelectedItem(item), setActiveImage(0))}
+                  onKeyDown={(e) => e.key === 'Enter' && setSelectedItem(item)}
                   whileHover={{ y: -4, transition: { duration: 0.25 } }}
                 >
                   <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-bg-purple to-bg-burgundy">
@@ -139,44 +140,17 @@ export function GalleryPageClient({ items }: GalleryPageClientProps) {
       <Modal open={!!selectedItem} onClose={() => setSelectedItem(null)} title={selectedItem?.title}>
         {selectedItem && (
           <div className="p-6">
-            <div className="relative aspect-video rounded-xl overflow-hidden mb-6 bg-gradient-to-br from-bg-void to-bg-burgundy">
-              <div className="absolute inset-0 flex items-center justify-center opacity-20">
-                <span className="text-8xl">🌸</span>
-              </div>
-              {selectedItem.images[activeImage] && (
-                <Image
-                  src={selectedItem.images[activeImage].url}
-                  alt={selectedItem.images[activeImage].alt}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 800px"
-                  onError={() => {}}
-                />
-              )}
-            </div>
+            {/* PART A: every image in this design's portfolio_media set, each with
+                its own admin-set price / variant label / book button. */}
+            <LooksGallery item={selectedItem} compact />
 
-            {selectedItem.images.length > 1 && (
-              <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
-                {selectedItem.images.map((img, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setActiveImage(i)}
-                    aria-label={`तस्वीर ${i + 1}`}
-                    className={`flex-shrink-0 w-16 h-12 rounded-lg overflow-hidden border-2 transition-colors ${
-                      i === activeImage ? 'border-gold' : 'border-transparent'
-                    }`}
-                  >
-                    <div className="w-full h-full bg-gradient-to-br from-bg-purple to-bg-burgundy" />
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <h2 className="text-2xl font-bold text-champagne font-devanagari mb-2">{selectedItem.title}</h2>
                 <p className="text-text-muted text-sm mb-1">📍 {selectedItem.location}</p>
-                <p className="text-gold font-semibold mb-3">{selectedItem.priceRange}</p>
+                {!selectedItem.images.some(isBookableLook) && (
+                  <p className="text-gold font-semibold mb-3">{selectedItem.priceRange}</p>
+                )}
                 <p className="text-text-muted text-sm leading-relaxed font-devanagari">{selectedItem.description}</p>
               </div>
               <div>
@@ -193,8 +167,15 @@ export function GalleryPageClient({ items }: GalleryPageClientProps) {
             </div>
 
             <div className="mt-6 pt-6 border-t border-gold/10 flex flex-col sm:flex-row gap-3">
-              <Button variant="primary" size="lg" onClick={() => handleBook(selectedItem)} className="flex-1 font-devanagari">
-                ऐसा ही डिजाइन बुक करें
+              {/* When individual looks are priced, the per-look buttons above are
+                  the primary CTA — this becomes a quiet custom-quote fallback. */}
+              <Button
+                variant={selectedItem.images.some(isBookableLook) ? 'outline' : 'primary'}
+                size="lg"
+                onClick={() => handleBook(selectedItem)}
+                className="flex-1 font-devanagari"
+              >
+                {selectedItem.images.some(isBookableLook) ? 'कस्टम कोटेशन चाहिए' : 'ऐसा ही डिजाइन बुक करें'}
               </Button>
               <Link
                 href={`/gallery/${selectedItem.slug}`}

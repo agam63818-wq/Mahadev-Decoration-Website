@@ -1,17 +1,20 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { CheckCircle2, Star, Sparkles, Heart, Shield, Trophy } from 'lucide-react'
 
-const trustItems = [
-  { label: 'अनुभवी टीम', icon: Users, color: 'text-gold' },
-  { label: 'उचित मूल्य', icon: CreditCard, color: 'text-emerald-400' },
-  { label: 'कस्टम डिजाइन', icon: Palette, color: 'text-rose' },
-  { label: 'समय पर सेवा', icon: Clock, color: 'text-gold' },
-  { label: '24/7 सपोर्ट', icon: Headphones, color: 'text-blue-400' },
-  { label: 'प्रीमियम क्वालिटी', icon: Sparkles, color: 'text-gold' },
-  { label: '100% संतुष्टि', icon: Heart, color: 'text-rose' },
-  { label: '1500+ इवेंट्स', icon: Trophy, color: 'text-gold' },
+// Icons are rendered from the inline `icons` map below (keyed by name), so each
+// item carries the key rather than an imported component reference.
+type TrustIconKey = keyof typeof icons
+
+const trustItems: Array<{ label: string; iconKey: TrustIconKey; color: string }> = [
+  { label: 'अनुभवी टीम', iconKey: 'Users', color: 'text-gold' },
+  { label: 'उचित मूल्य', iconKey: 'CreditCard', color: 'text-emerald-400' },
+  { label: 'कस्टम डिजाइन', iconKey: 'Palette', color: 'text-rose' },
+  { label: 'समय पर सेवा', iconKey: 'Clock', color: 'text-gold' },
+  { label: '24/7 सपोर्ट', iconKey: 'Headphones', color: 'text-blue-400' },
+  { label: 'प्रीमियम क्वालिटी', iconKey: 'Sparkles', color: 'text-gold' },
+  { label: '100% संतुष्टि', iconKey: 'Heart', color: 'text-rose' },
+  { label: '1500+ इवेंट्स', iconKey: 'Trophy', color: 'text-gold' },
 ]
 
 const icons = {
@@ -96,7 +99,9 @@ export function TrustStrip() {
             animate={{ opacity: 1 }}
             transition={{ delay: i * 0.02 }}
           >
-            <span className={`${icons[item.icon.name]} ${item.color} flex-shrink-0`} />
+            {/* icons[] holds JSX elements, so render the element rather than
+                interpolating it into a className string. */}
+            <span className={`${item.color} flex-shrink-0`}>{icons[item.iconKey]}</span>
             <span className="font-devanagari tracking-wide">{item.label}</span>
             <span className="text-gold/40">✦</span>
           </motion.span>

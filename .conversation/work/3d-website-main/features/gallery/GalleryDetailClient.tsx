@@ -1,12 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
-import { MapPin, ChevronLeft, ChevronRight } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { PortfolioItem } from '@/types'
-import { Button } from '@/components/ui/Button'
+import { isBookableLook } from '@/types'
+import { LooksGallery } from './LooksGallery'
 
 interface GalleryDetailClientProps {
   item: PortfolioItem
@@ -14,67 +13,15 @@ interface GalleryDetailClientProps {
 }
 
 export function GalleryDetailClient({ item, bookingUrl }: GalleryDetailClientProps) {
-  const [activeImage, setActiveImage] = useState(0)
-
-  const prev = () => setActiveImage((i) => (i - 1 + item.images.length) % item.images.length)
-  const next = () => setActiveImage((i) => (i + 1) % item.images.length)
+  // When individual looks are priced, LooksGallery renders a per-look CTA next
+  // to each image, so the whole-item CTA below steps back to a quieter style.
+  const hasPricedLooks = item.images.some(isBookableLook)
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-      {/* Image gallery */}
+      {/* Every look in this design, each with its own label + price */}
       <div>
-        <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-gold/20 bg-gradient-to-br from-bg-purple to-bg-burgundy mb-4">
-          <div className="absolute inset-0 flex items-center justify-center opacity-20">
-            <span className="text-8xl">🌸</span>
-          </div>
-          {item.images[activeImage] && (
-            <Image
-              src={item.images[activeImage].url}
-              alt={item.images[activeImage].alt}
-              fill
-              className="object-cover"
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              priority
-              onError={() => {}}
-            />
-          )}
-          {item.images.length > 1 && (
-            <>
-              <button
-                onClick={prev}
-                aria-label="पिछली तस्वीर"
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 border border-gold/30 text-champagne hover:text-gold flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <button
-                onClick={next}
-                aria-label="अगली तस्वीर"
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 border border-gold/30 text-champagne hover:text-gold flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
-              >
-                <ChevronRight size={18} />
-              </button>
-            </>
-          )}
-        </div>
-
-        {/* Thumbnails */}
-        {item.images.length > 1 && (
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {item.images.map((img, i) => (
-              <button
-                key={i}
-                onClick={() => setActiveImage(i)}
-                aria-label={`तस्वीर ${i + 1}`}
-                className={`flex-shrink-0 w-20 h-14 rounded-lg overflow-hidden border-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold ${
-                  i === activeImage ? 'border-gold' : 'border-transparent opacity-60 hover:opacity-100'
-                }`}
-              >
-                <div className="w-full h-full bg-gradient-to-br from-bg-purple to-bg-burgundy" />
-              </button>
-            ))}
-          </div>
-        )}
+        <LooksGallery item={item} />
       </div>
 
       {/* Details */}
@@ -90,7 +37,9 @@ export function GalleryDetailClient({ item, bookingUrl }: GalleryDetailClientPro
           {item.location}
         </div>
 
-        <div className="text-gold font-bold text-xl mb-4">{item.priceRange}</div>
+        {item.priceRange && (
+          <div className="text-gold font-bold text-xl mb-4">{item.priceRange}</div>
+        )}
 
         <p className="text-text-muted leading-relaxed font-devanagari mb-6">{item.description}</p>
 
@@ -121,15 +70,21 @@ export function GalleryDetailClient({ item, bookingUrl }: GalleryDetailClientPro
           </div>
         )}
 
-        {/* CTA — typed hook for Part 2 */}
+        {/* Whole-item CTA (custom quote when per-look prices exist) */}
         <Link
           href={bookingUrl}
-          className="block w-full text-center px-8 py-4 rounded-xl bg-gold text-bg-void font-bold text-lg hover:bg-gold-light transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold font-devanagari"
+          className={`block w-full text-center px-8 py-4 rounded-xl font-bold text-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold font-devanagari ${
+            hasPricedLooks
+              ? 'border border-gold/40 text-gold hover:bg-gold/10'
+              : 'bg-gold text-bg-void hover:bg-gold-light'
+          }`}
         >
-          ऐसा ही डिजाइन बुक करें
+          {hasPricedLooks ? 'कस्टम कोटेशन चाहिए' : 'ऐसा ही डिजाइन बुक करें'}
         </Link>
         <p className="text-text-muted text-xs text-center mt-2 font-devanagari">
-          इस डिजाइन के साथ बुकिंग फॉर्म प्री-फिल होगा
+          {hasPricedLooks
+            ? 'अपनी ज़रूरत के मुताबिक बदलाव चाहिए? हमें बताएँ।'
+            : 'इस डिजाइन के साथ बुकिंग फॉर्म प्री-फिल होगा'}
         </p>
       </motion.div>
     </div>

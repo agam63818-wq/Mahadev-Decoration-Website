@@ -1,0 +1,114 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { LogOut, Loader2 } from 'lucide-react'
+import { AdminSidebar } from '@/components/layout/AdminSidebar'
+import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import type { UserRole } from '@/lib/auth/roles'
+
+interface AdminShellProps {
+  children: React.ReactNode
+  userEmail?: string | null
+  displayName?: string | null
+  role?: UserRole
+}
+
+const roleLabels: Record<string, string> = {
+  admin: 'एडमिन',
+  team: 'टीम',
+  customer: 'ग्राहक',
+}
+
+/**
+ * Admin chrome: sidebar + header + the actual page content.
+ *
+ * Replaces the previous AdminHeader, which never rendered `children` (so every
+ * admin page body was silently dropped) and "logged out" by clearing a
+ * sessionStorage flag — which did not invalidate the real Supabase session.
+ */
+export function AdminShell({
+  children,
+  userEmail,
+  displayName,
+  role,
+}: AdminShellProps) {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
+  const router = useRouter()
+
+  async function handleLogout() {
+    setLoggingOut(true)
+    try {
+      const supabase = getSupabaseBrowserClient()
+      // Clears the auth cookies both locally and server-side, so the
+      // middleware guard immediately stops letting this browser through.
+      if (supabase) await supabase.auth.signOut()
+    } finally {
+      router.replace('/admin/login')
+      router.refresh()
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-bg-void">
+      <AdminSidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed((v) => !v)}
+        onLogout={handleLogout}
+        loggingOut={loggingOut}
+      />
+
+      {/* Main content area */}
+      <div
+        className={`transition-all duration-300 pt-16 px-4 lg:px-8 pb-12 ${
+          sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
+        }`}
+      >
+        <div className="max-w-7xl mx-auto">
+          {/* Header bar */}
+          <header className="flex flex-wrap items-center justify-between gap-4 mb-8">
+            <div>
+              <h1 className="text-2xl font-display font-bold text-gold font-devanagari">
+                एडमिन पैनल
+              </h1>
+              <p className="text-text-muted text-sm mt-1 font-devanagari">
+                महादेव डेकोरेशन — प्रबंधन डैशबोर्ड
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {(displayName || userEmail) && (
+                <div className="hidden sm:block text-right">
+                  <p className="text-sm text-text-primary font-devanagari leading-tight">
+                    {displayName || userEmail}
+                  </p>
+                  {role && (
+                    <p className="text-xs text-gold/70 font-devanagari">
+                      {roleLabels[role] ?? role}
+                    </p>
+                  )}
+                </div>
+              )}
+              <button
+                onClick={handleLogout}
+                disabled={loggingOut}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gold/30 text-text-muted hover:text-gold hover:border-gold/50 text-sm font-devanagari transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {loggingOut ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <LogOut size={16} />
+                )}
+                लॉग आउट
+              </button>
+            </div>
+          </header>
+
+          {/* Actual page content — this is what the old AdminHeader dropped. */}
+          <div className="min-h-[60vh]">{children}</div>
+        </div>
+      </div>
+    </div>
+  )
+}

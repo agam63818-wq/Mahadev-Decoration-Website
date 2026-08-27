@@ -1,0 +1,18 @@
+<!--
+  Brand favicon. Next.js App Router picks up app/icon.svg automatically and
+  emits the <link rel="icon"> tag, which removes the /favicon.ico 404.
+  Colours are the existing theme tokens (gold #C9A84C on near-black) — no
+  theme change, just the "M" monogram for महादेव डेकोरेशन.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#E8C858"/>
+      <stop offset="50%" stop-color="#C9A84C"/>
+      <stop offset="100%" stop-color="#8A7028"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#0B0A0F"/>
+  <rect x="2.5" y="2.5" width="59" height="59" rx="12" fill="none" stroke="url(#g)" stroke-width="2.5"/>
+  <path d="M16 45V19h6.4l9.6 15.2L41.6 19H48v26h-6V30.4l-8 12.4h-4l-8-12.4V45z" fill="url(#g)"/>
+</svg>

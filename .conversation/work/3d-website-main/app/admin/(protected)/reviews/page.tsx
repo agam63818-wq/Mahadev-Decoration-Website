@@ -5,14 +5,9 @@ import { motion } from 'framer-motion'
 import {
   Search,
   Star,
-  ThumbsUp,
-  ThumbsDown,
   Edit,
-  Trash2,
   Eye,
-  EyeOff,
   Tag,
-  Clock,
   CheckCircle2,
   XCircle,
 } from 'lucide-react'

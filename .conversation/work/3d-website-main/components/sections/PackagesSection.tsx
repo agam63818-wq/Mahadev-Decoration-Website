@@ -1,11 +1,12 @@
 'use client'
 
+import Link from 'next/link'
+
 import { motion } from 'framer-motion'
 import { Check, Clock, Maximize2, Star, Sparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { SectionHeading } from '@/components/ui/SectionHeading'
 import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
 import type { Package } from '@/types'
 import { buildBookingUrl, formatPrice } from '@/utils/booking'
 
@@ -186,15 +187,13 @@ export function PackagesSection({ packages }: PackagesSectionProps) {
 
         {/* View all CTA */}
         <div className="text-center">
-          <Button
-            variant="secondary"
-            size="lg"
-            onClick={() => router.push('/packages')}
-            className="font-devanagari gap-1.5"
+          <Link
+            href="/packages"
+            className="inline-flex items-center gap-1.5 px-8 py-3.5 rounded-xl border border-gold/40 text-gold font-semibold hover:bg-gold/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold font-devanagari"
           >
             <span>सभी पैकेज देखें</span>
             <span className="text-gold-dim">↓</span>
-          </Button>
+          </Link>
         </div>
       </div>
     </section>

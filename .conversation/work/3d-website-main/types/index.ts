@@ -72,12 +72,37 @@ export interface PortfolioItem {
   tags: string[]
 }
 
+/**
+ * A single image inside a portfolio item — one "look" of that design.
+ *
+ * Pricing is per-image, not per-item: the same mandap design can be offered as
+ * several looks at different price points, and the customer books the exact
+ * look they picked. Maps to public.portfolio_media.
+ */
 export interface PortfolioImage {
+  /** portfolio_media.id — carried into the booking as selected_portfolio_media_id. */
+  id: string
   url: string
   alt: string
   width: number
   height: number
+  /** Cover image shown on the gallery card. Mirrors is_cover / is_primary. */
   isPrimary?: boolean
+  /**
+   * Admin-defined label for this look, e.g. "बेसिक लुक" / "प्रीमियम लुक".
+   * Never hardcode a fixed set — whatever the admin types is what shows.
+   */
+  variantLabel?: string | null
+  /** Price for this specific look. null ⇒ plain reference photo, no price badge. */
+  price?: number | null
+  /** Admin can hide the book button for a look that is not currently offered. */
+  isBookable?: boolean
+  sortOrder?: number
+}
+
+/** A look is bookable only when the admin both priced it and left it bookable. */
+export function isBookableLook(image: PortfolioImage): boolean {
+  return image.isBookable !== false && image.price != null && image.price > 0
 }
 
 // ─── Package ──────────────────────────────────────────────────────────────────
@@ -168,11 +193,17 @@ export interface BusinessHours {
   isClosed: boolean
 }
 
+/**
+ * Open key-value map of social platforms, mirroring business_settings.social_links
+ * (jsonb). The named keys below are conveniences for existing call sites — new
+ * platforms can be added by the admin without a code change.
+ */
 export interface SocialLinks {
   instagram?: string
   facebook?: string
   youtube?: string
-  whatsapp: string
+  whatsapp?: string
+  [platform: string]: string | undefined
 }
 
 // ─── Booking Prefill Context (seam for Part 2) ────────────────────────────────
@@ -182,6 +213,12 @@ export interface BookingPrefillContext {
   eventType?: EventType
   packageId?: string
   portfolioItemId?: string
+  /** The exact look the customer clicked — persisted as selected_portfolio_media_id. */
+  portfolioMediaId?: string
+  /** Price of that look, for the booking summary. */
+  price?: number | null
+  /** Label of that look, for the booking summary. */
+  variantLabel?: string | null
   style?: DecorationStyle
   sourceName?: string   // Human-readable label for the prefill chip
 }

@@ -1,9 +1,13 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import './globals.css'
 import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
 import { FloatingActions } from '@/components/layout/FloatingActions'
 import { LenisProvider } from '@/components/layout/LenisProvider'
+import { BusinessInfoReminder } from '@/components/layout/BusinessInfoReminder'
+import { BusinessSettingsProvider } from '@/components/providers/BusinessSettingsProvider'
+import { getBusinessSettings } from '@/services/business'
 
 // ─── Fonts ────────────────────────────────────────────────────────────────────
 // Fonts are loaded via CSS @import in globals.css for build-environment
@@ -18,7 +22,7 @@ export const metadata: Metadata = {
     template: '%s | महादेव डेकोरेशन',
   },
   description:
-    'बेगूसराय में प्रीमियम डेकोरेशन सर्विस — वेडिंग, बर्थडे, हल्दी, मेहंदी, स्टेज, कार और हर खास अवसर के लिए शानदार सजावट। 1000+ खुश ग्राहक, 5+ वर्ष का अनुभव। अभी बुकिंग करें: 7091514078',
+    'बेगूसराय में प्रीमियम डेकोरेशन सर्विस — वेडिंग, बर्थडे, हल्दी, मेहंदी, स्टेज, कार और हर खास अवसर के लिए शानदार सजावट। 1000+ खुश ग्राहक, 5+ वर्ष का अनुभव। अभी बुकिंग करें।',
   keywords: [
     'Decoration in Begusarai',
     'Wedding decoration Begusarai',
@@ -46,19 +50,30 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  // Fetched once per request and shared with every client component below, so
+  // the navbar, footer, floating buttons and mobile action bar all show the
+  // same live phone / WhatsApp / address from business_settings.
+  const settings = await getBusinessSettings()
+
   return (
     <html lang="hi">
       <body className="bg-bg-void text-text-primary antialiased">
-        <LenisProvider />
-        <Navbar />
-        <main id="main-content">{children}</main>
-        <Footer />
-        <FloatingActions />
+        <BusinessSettingsProvider settings={settings}>
+          <LenisProvider />
+          {/* Staff-only nudge while contact info is incomplete. */}
+          <Suspense fallback={null}>
+            <BusinessInfoReminder />
+          </Suspense>
+          <Navbar />
+          <main id="main-content">{children}</main>
+          <Footer />
+          <FloatingActions />
+        </BusinessSettingsProvider>
       </body>
     </html>
   )

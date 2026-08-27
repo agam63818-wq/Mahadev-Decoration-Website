@@ -3,19 +3,17 @@
 import {
   Calendar,
   Clock,
-  Users,
   FileText,
   DollarSign,
   TrendingUp,
-  AlertCircle,
   CheckCircle2,
-  Invoice,
+  Receipt,
   CreditCard,
   ArrowRight,
+  Image as ImageIcon,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Card } from '@/components/ui/Card'
-import { StatBadge } from '@/components/ui/StatBadge'
 import Link from 'next/link'
 
 interface DashboardCard {
@@ -91,7 +89,7 @@ const dashboardCards: DashboardCard[] = [
     title: 'लंबित पेमेंट्स',
     value: '₹3,200',
     subtitle: 'अभी लेते हैं',
-    icon: Invoice,
+    icon: Receipt,
     color: 'from-rose-400 to-rose-600',
     href: '/admin/payments',
   },
@@ -178,7 +176,7 @@ export default function AdminDashboardPage() {
             { label: 'नया बुकिंग', href: '/admin/bookings', icon: FileText },
             { label: 'कैलेंडर देखें', href: '/admin/calendar', icon: Calendar },
             { label: 'रिपोर्ट देखें', href: '/admin/analytics', icon: TrendingUp },
-            { label: 'पोर्टफोलियो अपलोड', href: '/admin/portfolio', icon: Photo },
+            { label: 'पोर्टफोलियो अपलोड', href: '/admin/portfolio', icon: ImageIcon },
           ].map((action) => (
             <Link
               key={action.href}

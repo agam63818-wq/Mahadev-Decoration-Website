@@ -3,7 +3,9 @@ import type { PortfolioItem } from '@/types'
 // ─── Portfolio Items ───────────────────────────────────────────────────────────
 // Admin-editable in Part 3 via portfolio_items / portfolio_media tables.
 // Part 2 will swap this for Supabase queries keeping the same PortfolioItem shape.
-// Image URLs point to /images/portfolio/* — swap for real photos without touching components.
+// Image URLs must point at files that actually exist under /public (currently
+// /assets/*). These are only the offline fallback: once Supabase is configured,
+// services/portfolio.ts serves real portfolio_media rows instead.
 export const portfolioItems: PortfolioItem[] = [
   {
     id: 'p-001',
@@ -17,20 +19,23 @@ export const portfolioItems: PortfolioItem[] = [
     servicesIncluded: ['मंडप डेकोरेशन', 'स्टेज सजावट', 'फ्लोरल आर्च', 'LED लाइटिंग', 'कार डेकोरेशन'],
     images: [
       {
-        url: '/images/portfolio/wedding-01-main.jpg',
+        id: 'p-001-img-1',
+        url: '/assets/flower-arch-hero.png',
         alt: 'बेगूसराय में शाही वेडिंग मंडप — गोल्ड और व्हाइट थीम, फूलों की सजावट',
         width: 800,
         height: 600,
         isPrimary: true,
       },
       {
-        url: '/images/portfolio/wedding-01-stage.jpg',
+        id: 'p-001-img-2',
+        url: '/assets/stage.png',
         alt: 'वेडिंग स्टेज डेकोरेशन — LED बैकड्रॉप और फ्लोरल आर्रेंजमेंट',
         width: 800,
         height: 600,
       },
       {
-        url: '/images/portfolio/wedding-01-car.jpg',
+        id: 'p-001-img-3',
+        url: '/assets/car-decoration-hero.png',
         alt: 'दूल्हे की कार डेकोरेशन — गुलाब और रिबन',
         width: 800,
         height: 600,
@@ -51,14 +56,16 @@ export const portfolioItems: PortfolioItem[] = [
     servicesIncluded: ['बैलून डेकोरेशन', 'थीम बैकड्रॉप', 'टेबल सेटअप', 'LED लाइटिंग'],
     images: [
       {
-        url: '/images/portfolio/birthday-01-main.jpg',
+        id: 'p-002-img-1',
+        url: '/assets/birthday.png',
         alt: 'बेगूसराय में प्रिंसेस थीम बर्थडे डेकोरेशन — पिंक और गोल्ड बैलून आर्च',
         width: 800,
         height: 600,
         isPrimary: true,
       },
       {
-        url: '/images/portfolio/birthday-01-backdrop.jpg',
+        id: 'p-002-img-2',
+        url: '/assets/birthday1.png',
         alt: 'कस्टम बर्थडे बैकड्रॉप — प्रिंसेस थीम',
         width: 800,
         height: 600,
@@ -79,7 +86,8 @@ export const portfolioItems: PortfolioItem[] = [
     servicesIncluded: ['मैरीगोल्ड डेकोरेशन', 'फ्लोरल बैकड्रॉप', 'सीटिंग अरेंजमेंट', 'फोटो जोन'],
     images: [
       {
-        url: '/images/portfolio/haldi-01-main.jpg',
+        id: 'p-003-img-1',
+        url: '/assets/haldi.png',
         alt: 'बेगूसराय में हल्दी सेरेमनी डेकोरेशन — मैरीगोल्ड और पीले फूल',
         width: 800,
         height: 600,
@@ -101,7 +109,8 @@ export const portfolioItems: PortfolioItem[] = [
     servicesIncluded: ['बोहो डेकोरेशन', 'फ्लोरल आर्रेंजमेंट', 'लैंटर्न सेटअप', 'फेयरी लाइट्स'],
     images: [
       {
-        url: '/images/portfolio/mehendi-01-main.jpg',
+        id: 'p-004-img-1',
+        url: '/assets/mehendi.png',
         alt: 'बेगूसराय में मेहंदी नाइट डेकोरेशन — बोहो थीम, रंगीन फूल और लैंटर्न',
         width: 800,
         height: 600,
@@ -123,7 +132,8 @@ export const portfolioItems: PortfolioItem[] = [
     servicesIncluded: ['फ्लोरल डेकोरेशन', 'रिबन और बो', 'LED लाइट्स', 'नंबर प्लेट डेकोर'],
     images: [
       {
-        url: '/images/portfolio/car-01-main.jpg',
+        id: 'p-005-img-1',
+        url: '/assets/car-decoration-hero.png',
         alt: 'वेडिंग कार डेकोरेशन — सफेद गुलाब, गोल्ड रिबन और LED लाइट्स',
         width: 800,
         height: 600,
@@ -145,7 +155,8 @@ export const portfolioItems: PortfolioItem[] = [
     servicesIncluded: ['LED बैकड्रॉप', 'फ्लोरल डेकोरेशन', 'प्रोफेशनल लाइटिंग', 'स्टेज सेटअप'],
     images: [
       {
-        url: '/images/portfolio/stage-01-main.jpg',
+        id: 'p-006-img-1',
+        url: '/assets/stage.png',
         alt: 'बेगूसराय में भव्य स्टेज डेकोरेशन — LED बैकड्रॉप और फ्लोरल आर्रेंजमेंट',
         width: 800,
         height: 600,
@@ -167,7 +178,8 @@ export const portfolioItems: PortfolioItem[] = [
     servicesIncluded: ['रोज़ पेटल डेकोर', 'कैंडल सेटअप', 'लव थीम बैकड्रॉप', 'फेयरी लाइट्स'],
     images: [
       {
-        url: '/images/portfolio/anniversary-01-main.jpg',
+        id: 'p-007-img-1',
+        url: '/assets/anniversary.png',
         alt: 'रोमांटिक एनिवर्सरी डेकोरेशन — रोज़ पेटल, कैंडल और लव थीम',
         width: 800,
         height: 600,
@@ -189,7 +201,8 @@ export const portfolioItems: PortfolioItem[] = [
     servicesIncluded: ['मंडप स्ट्रक्चर', 'फ्लोरल डेकोरेशन', 'कपड़े की सजावट', 'दीप और दिया'],
     images: [
       {
-        url: '/images/portfolio/mandap-01-main.jpg',
+        id: 'p-008-img-1',
+        url: '/assets/flower-arch-hero.png',
         alt: 'पारंपरिक मंडप डेकोरेशन — फूल, कपड़े और दीप',
         width: 800,
         height: 600,

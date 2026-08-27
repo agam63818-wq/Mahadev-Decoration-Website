@@ -26,6 +26,11 @@ interface ContactPageClientProps {
 }
 
 export function ContactPageClient({ business, areas }: ContactPageClientProps) {
+  // Human-readable location built from business_settings. Empty string when the
+  // admin has not added an address yet, which hides the label entirely rather
+  // than printing an invented city.
+  const locationLabel = [business.address, business.city].filter(Boolean).join(', ')
+
   const [toast, setToast] = useState<{ open: boolean; type: 'success' | 'error'; title: string }>({
     open: false,
     type: 'success',
@@ -247,27 +252,35 @@ export function ContactPageClient({ business, areas }: ContactPageClientProps) {
         </motion.div>
       </div>
 
-      {/* Map */}
-      <div className="mt-12">
-        <h2 className="text-xl font-bold text-champagne font-devanagari mb-4">हमारा स्थान</h2>
-        <div className="relative aspect-video rounded-2xl overflow-hidden border border-gold/20 bg-bg-purple">
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-0">
-            <MapPin size={40} className="text-gold opacity-40" />
-            <p className="text-text-muted font-devanagari">बेगूसराय, बिहार</p>
+      {/* Map — location text and embed both come from business_settings. The
+          whole block is hidden until the admin actually fills in an address, so
+          the page never shows a placeholder location as if it were real. */}
+      {(business.address || business.city || business.mapEmbedUrl) && (
+        <div className="mt-12">
+          <h2 className="text-xl font-bold text-champagne font-devanagari mb-4">हमारा स्थान</h2>
+          <div className="relative aspect-video rounded-2xl overflow-hidden border border-gold/20 bg-bg-purple">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-0">
+              <MapPin size={40} className="text-gold opacity-40" />
+              {locationLabel && (
+                <p className="text-text-muted font-devanagari text-center px-4">{locationLabel}</p>
+              )}
+            </div>
+            {business.mapEmbedUrl && (
+              <iframe
+                src={business.mapEmbedUrl}
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title={`महादेव डेकोरेशन${locationLabel ? ` — ${locationLabel}` : ''} का नक्शा`}
+                className="relative z-10"
+              />
+            )}
           </div>
-          <iframe
-            src={business.mapEmbedUrl}
-            width="100%"
-            height="100%"
-            style={{ border: 0 }}
-            allowFullScreen
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            title="महादेव डेकोरेशन — बेगूसराय, बिहार का नक्शा"
-            className="relative z-10"
-          />
         </div>
-      </div>
+      )}
 
       <Toast
         open={toast.open}

@@ -5,7 +5,7 @@ import { ChevronUp, ChevronDown, Download } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 
-interface Column<T> {
+interface Column {
   key: string
   label: string
   sortable?: boolean
@@ -13,9 +13,10 @@ interface Column<T> {
 }
 
 interface DataTableProps<T> {
-  columns: Column<T>[]
+  columns: Column[]
   data: T[]
-  renderRow: (row: T) => React.ReactNode[]
+  /** Returns the row's <td> cells, normally as a fragment. */
+  renderRow: (row: T) => React.ReactNode
   sortKey?: string
   onSort?: (key: string) => void
   loading?: boolean
@@ -40,8 +41,8 @@ export function DataTable<T>({
       if (bVal === null || bVal === undefined) return -1
       return typeof aVal === 'string'
         ? sortDir === 'asc'
-          ? aVal.localeCompare(bVal as string)
-          : bVal.localeCompare(aVal as string)
+          ? aVal.localeCompare(String(bVal))
+          : String(bVal).localeCompare(aVal)
         : sortDir === 'asc'
         ? (Number(aVal) - Number(bVal))
         : (Number(bVal) - Number(aVal))

@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Phone, Sparkles } from 'lucide-react'
+import { Menu, X, Phone } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { Button } from '@/components/ui/Button'
-import { businessSettings } from '@/lib/data'
+import { useContactAvailability } from '@/components/providers/BusinessSettingsProvider'
 
 const navLinks = [
   { href: '/', label: 'होम' },
@@ -20,6 +20,8 @@ const navLinks = [
 ]
 
 export function Navbar() {
+  // Live from business_settings — hidden entirely until the admin adds a number.
+  const { phone, hasPhone } = useContactAvailability()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
@@ -124,14 +126,16 @@ export function Navbar() {
         {/* Desktop right actions — premium */}
         <div className="hidden lg:flex items-center gap-3">
           {/* Phone — elegant */}
+          {hasPhone && (
           <a
-            href={`tel:${businessSettings.phone}`}
+            href={`tel:${phone}`}
             className="flex items-center gap-2 px-3 py-2 rounded-full border border-gold/20 text-champagne text-sm hover:border-gold hover:text-gold hover:bg-gold/5 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
-            aria-label={`कॉल करें: ${businessSettings.phone}`}
+            aria-label={`कॉल करें: ${phone}`}
           >
             <Phone size={14} className="text-gold" />
-            <span className="tabular-nums">{businessSettings.phone}</span>
+            <span className="tabular-nums">{phone}</span>
           </a>
+          )}
 
           {/* Book CTAs */}
           <Button
@@ -203,18 +207,20 @@ export function Navbar() {
                 )
               })}
               {/* Divider + contact */}
+              {hasPhone && (
               <li className="pt-3 border-t border-gold/10">
                 <a
-                  href={`tel:${businessSettings.phone}`}
+                  href={`tel:${phone}`}
                   className="flex items-center gap-3 px-4 py-3 rounded-lg bg-gold/5 text-gold hover:bg-gold/10 transition-all"
                 >
                   <Phone size={16} className="text-gold" />
                   <div className="flex flex-col">
-                    <span className="text-sm font-devanagari">{businessSettings.phone}</span>
+                    <span className="text-sm font-devanagari">{phone}</span>
                     <span className="text-text-muted text-xs">कॉल करें</span>
                   </div>
                 </a>
               </li>
+              )}
             </ul>
 
             {/* Mobile CTA buttons — premium */}
@@ -224,18 +230,19 @@ export function Navbar() {
                   variant="primary"
                   size="md"
                   onClick={() => (window.location.href = '/booking')}
-                  className="font-devanagari"
-                  fullWidth
+                  className="font-devanagari w-full"
                 >
                   बुकिंग करें <span className="text-bg-void text-sm">→</span>
                 </Button>
+                {hasPhone && (
                 <a
-                  href={`tel:${businessSettings.phone}`}
+                  href={`tel:${phone}`}
                   className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gold/10 border border-gold/20 text-gold hover:bg-gold/20 transition-all font-devanagari text-sm"
                 >
                   <Phone size={14} />
-                  अभी कॉल करें — {businessSettings.phone}
+                  अभी कॉल करें — {phone}
                 </a>
+                )}
               </div>
             </div>
           </motion.div>

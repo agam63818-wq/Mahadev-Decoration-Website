@@ -125,7 +125,7 @@ export function OccasionsSection({ occasions }: OccasionsSectionProps) {
 
         {/* Stats bar — premium refined */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-t border-gold/10">
-          {statsBar.map((stat, i) => (
+          {statsBar.map((stat) => (
             <div key={stat.id} className="flex items-center gap-2 group hover:gap-3 transition-all duration-300">
               <div className="w-9 h-9 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center flex-shrink-0 group-hover:border-gold/40 group-hover:bg-gold/20 transition-all duration-300">
                 <span className="text-gold text-sm">
@@ -141,7 +141,7 @@ export function OccasionsSection({ occasions }: OccasionsSectionProps) {
                 <p className="text-text-muted text-xs font-devanagari truncate">{stat.label}</p>
               </div>
             </div>
-          </div>
+          ))}
         </div>
       </div>
     </section>

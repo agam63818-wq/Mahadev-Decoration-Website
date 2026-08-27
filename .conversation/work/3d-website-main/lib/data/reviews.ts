@@ -12,7 +12,7 @@ export const reviews: Review[] = [
     rating: 5,
     reviewText:
       'महादेव डेकोरेशन ने हमारी शादी को सपने जैसा बना दिया। मंडप की सजावट इतनी खूबसूरत थी कि सभी मेहमान तारीफ करते रहे। टीम बहुत प्रोफेशनल और समय पर थी। पूरी तरह संतुष्ट हूं!',
-    eventPhotoUrl: '/images/reviews/aman-wedding.jpg',
+    eventPhotoUrl: '/assets/flower-arch-hero.png',
     eventPhotoAlt: 'अमन कुमार की शादी — महादेव डेकोरेशन द्वारा',
     date: '2024-11-15',
     featured: true,

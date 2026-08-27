@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import {
-  Search,
   Package,
   Star,
   Eye,
@@ -11,8 +10,6 @@ import {
   Trash2,
   Edit,
   Plus,
-  Check,
-  X,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'

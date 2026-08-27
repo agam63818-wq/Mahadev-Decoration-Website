@@ -9,6 +9,10 @@ export function buildBookingUrl(context: BookingPrefillContext): string {
   if (context.eventType) params.set('eventType', context.eventType)
   if (context.packageId) params.set('packageId', context.packageId)
   if (context.portfolioItemId) params.set('portfolioItemId', context.portfolioItemId)
+  // The exact look the customer clicked, so the booking records which one it was.
+  if (context.portfolioMediaId) params.set('portfolioMediaId', context.portfolioMediaId)
+  if (context.price != null) params.set('price', String(context.price))
+  if (context.variantLabel) params.set('variantLabel', context.variantLabel)
   if (context.style) params.set('style', context.style)
   if (context.sourceName) params.set('sourceName', context.sourceName)
   const qs = params.toString()

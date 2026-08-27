@@ -3,13 +3,15 @@
 import { motion } from 'framer-motion'
 import { MessageCircle, ArrowRight, Sparkles, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { businessSettings } from '@/lib/data'
+import { useBusinessSettings, useContactAvailability } from '@/components/providers/BusinessSettingsProvider'
 import { buildWhatsAppUrl } from '@/utils/booking'
-import Image from 'next/image'
 
 export function FinalCTASection() {
+  // Live from business_settings — one admin edit updates every CTA.
+  const businessSettings = useBusinessSettings()
+  const { phone, whatsapp, hasPhone, hasWhatsapp } = useContactAvailability()
   const whatsappUrl = buildWhatsAppUrl(
-    businessSettings.whatsapp,
+    whatsapp,
     'नमस्ते! मुझे अपने इवेंट के लिए डेकोरेशन बुक करनी है।'
   )
 
@@ -103,6 +105,7 @@ export function FinalCTASection() {
             <span className="text-bg-void text-sm font-normal">→</span>
           </Button>
 
+          {hasWhatsapp && (
           <a
             href={whatsappUrl}
             target="_blank"
@@ -121,6 +124,7 @@ export function FinalCTASection() {
               className="text-white/70 group-hover:text-white transition-all group-hover:translate-x-1"
             />
           </a>
+          )}
         </motion.div>
 
         {/* Phone + Trust line */}
@@ -131,10 +135,14 @@ export function FinalCTASection() {
           transition={{ duration: 0.5, delay: 0.4 }}
           className="text-text-muted text-sm mt-6 font-devanagari flex items-center justify-center gap-2 flex-wrap"
         >
-          <span className="flex items-center gap-1">
-            <span className="text-gold">📞</span> {businessSettings.phone}
-          </span>
-          <span className="text-gold/40">|</span>
+          {hasPhone && (
+            <>
+              <span className="flex items-center gap-1">
+                <span className="text-gold">📞</span> {phone}
+              </span>
+              <span className="text-gold/40">|</span>
+            </>
+          )}
           <span className="flex items-center gap-1">
             <Heart size={14} className="text-rose fill-rose/30" />
             100% ग्राहक संतुष्टि
