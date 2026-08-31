@@ -41,9 +41,7 @@ export async function getBusinessSettings(): Promise<BusinessSettings> {
 
   const { data: row, error } = await supabase
     .from('business_settings')
-    .select(
-      'phone, whatsapp, email, address, city, state, pincode, business_hours, social_links, map_embed_url',
-    )
+    .select('phone, whatsapp, email, address, business_hours, social_links')
     .limit(1)
     .maybeSingle()
 
@@ -54,16 +52,7 @@ export async function getBusinessSettings(): Promise<BusinessSettings> {
 
   const data = row as unknown as Pick<
     BusinessSettingsRow,
-    | 'phone'
-    | 'whatsapp'
-    | 'email'
-    | 'address'
-    | 'city'
-    | 'state'
-    | 'pincode'
-    | 'business_hours'
-    | 'social_links'
-    | 'map_embed_url'
+    'phone' | 'whatsapp' | 'email' | 'address' | 'business_hours' | 'social_links'
   >
 
   const text = (value: unknown, fallback: string): string => {
@@ -94,14 +83,8 @@ export async function getBusinessSettings(): Promise<BusinessSettings> {
     whatsapp: text(data.whatsapp, ''),
     email: text(data.email, ''),
     address,
-    // No separate Hindi address column — reuse the single admin-entered value.
-    addressHindi: address,
-    city: text(data.city, ''),
-    state: text(data.state, ''),
-    pincode: text(data.pincode, ''),
     businessHours,
     socialLinks,
-    mapEmbedUrl: text(data.map_embed_url, ''),
   }
 }
 

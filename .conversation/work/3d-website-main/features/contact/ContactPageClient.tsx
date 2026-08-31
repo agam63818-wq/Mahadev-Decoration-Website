@@ -26,10 +26,10 @@ interface ContactPageClientProps {
 }
 
 export function ContactPageClient({ business, areas }: ContactPageClientProps) {
-  // Human-readable location built from business_settings. Empty string when the
-  // admin has not added an address yet, which hides the label entirely rather
-  // than printing an invented city.
-  const locationLabel = [business.address, business.city].filter(Boolean).join(', ')
+  // The address comes straight from business_settings. Empty string when the
+  // admin has not added one yet, which hides the label entirely rather than
+  // printing an invented location.
+  const locationLabel = business.address.trim()
 
   const [toast, setToast] = useState<{ open: boolean; type: 'success' | 'error'; title: string }>({
     open: false,
@@ -68,58 +68,68 @@ export function ContactPageClient({ business, areas }: ContactPageClientProps) {
           >
             <h2 className="text-2xl font-bold text-champagne font-devanagari mb-6">हमसे संपर्क करें</h2>
 
-            {/* Quick contact cards */}
+            {/* Quick contact cards — each one renders only when the admin has
+                actually filled in that value, so the page never shows a broken
+                tel:/mailto: link or an invented address. */}
             <div className="space-y-4">
-              <a
-                href={`tel:${business.phone}`}
-                className="flex items-center gap-4 p-4 bg-bg-purple border border-gold/20 rounded-xl hover:border-gold transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
-              >
-                <div className="w-12 h-12 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center group-hover:bg-gold/20 transition-colors">
-                  <Phone size={20} className="text-gold" />
-                </div>
-                <div>
-                  <p className="text-champagne font-semibold">{business.phone}</p>
-                  <p className="text-text-muted text-sm font-devanagari">कॉल करें — 24/7 उपलब्ध</p>
-                </div>
-              </a>
+              {business.phone && (
+                <a
+                  href={`tel:${business.phone}`}
+                  className="flex items-center gap-4 p-4 bg-bg-purple border border-gold/20 rounded-xl hover:border-gold transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+                >
+                  <div className="w-12 h-12 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center group-hover:bg-gold/20 transition-colors">
+                    <Phone size={20} className="text-gold" />
+                  </div>
+                  <div>
+                    <p className="text-champagne font-semibold">{business.phone}</p>
+                    <p className="text-text-muted text-sm font-devanagari">कॉल करें — 24/7 उपलब्ध</p>
+                  </div>
+                </a>
+              )}
 
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-4 p-4 bg-bg-purple border border-gold/20 rounded-xl hover:border-[#25D366] transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]"
-              >
-                <div className="w-12 h-12 rounded-full bg-[#25D366]/10 border border-[#25D366]/30 flex items-center justify-center group-hover:bg-[#25D366]/20 transition-colors">
-                  <MessageCircle size={20} className="text-[#25D366]" />
-                </div>
-                <div>
-                  <p className="text-champagne font-semibold">WhatsApp</p>
-                  <p className="text-text-muted text-sm font-devanagari">तुरंत जवाब पाएं</p>
-                </div>
-              </a>
+              {business.whatsapp && (
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-4 p-4 bg-bg-purple border border-gold/20 rounded-xl hover:border-[#25D366] transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]"
+                >
+                  <div className="w-12 h-12 rounded-full bg-[#25D366]/10 border border-[#25D366]/30 flex items-center justify-center group-hover:bg-[#25D366]/20 transition-colors">
+                    <MessageCircle size={20} className="text-[#25D366]" />
+                  </div>
+                  <div>
+                    <p className="text-champagne font-semibold">WhatsApp</p>
+                    <p className="text-text-muted text-sm font-devanagari">तुरंत जवाब पाएं</p>
+                  </div>
+                </a>
+              )}
 
-              <a
-                href={`mailto:${business.email}`}
-                className="flex items-center gap-4 p-4 bg-bg-purple border border-gold/20 rounded-xl hover:border-gold transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
-              >
-                <div className="w-12 h-12 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center group-hover:bg-gold/20 transition-colors">
-                  <Mail size={20} className="text-gold" />
-                </div>
-                <div>
-                  <p className="text-champagne font-semibold">{business.email}</p>
-                  <p className="text-text-muted text-sm font-devanagari">ईमेल करें</p>
-                </div>
-              </a>
+              {business.email && (
+                <a
+                  href={`mailto:${business.email}`}
+                  className="flex items-center gap-4 p-4 bg-bg-purple border border-gold/20 rounded-xl hover:border-gold transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+                >
+                  <div className="w-12 h-12 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center group-hover:bg-gold/20 transition-colors">
+                    <Mail size={20} className="text-gold" />
+                  </div>
+                  <div>
+                    <p className="text-champagne font-semibold">{business.email}</p>
+                    <p className="text-text-muted text-sm font-devanagari">ईमेल करें</p>
+                  </div>
+                </a>
+              )}
 
-              <div className="flex items-start gap-4 p-4 bg-bg-purple border border-gold/20 rounded-xl">
-                <div className="w-12 h-12 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center flex-shrink-0">
-                  <MapPin size={20} className="text-gold" />
+              {locationLabel && (
+                <div className="flex items-start gap-4 p-4 bg-bg-purple border border-gold/20 rounded-xl">
+                  <div className="w-12 h-12 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center flex-shrink-0">
+                    <MapPin size={20} className="text-gold" />
+                  </div>
+                  <div>
+                    <p className="text-champagne font-semibold font-devanagari">{locationLabel}</p>
+                    <p className="text-text-muted text-sm font-devanagari">स्टूडियो / दुकान का पता</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-champagne font-semibold font-devanagari">{business.addressHindi}</p>
-                  <p className="text-text-muted text-sm">{business.city}, {business.state} — {business.pincode}</p>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Business hours */}
@@ -252,32 +262,17 @@ export function ContactPageClient({ business, areas }: ContactPageClientProps) {
         </motion.div>
       </div>
 
-      {/* Map — location text and embed both come from business_settings. The
-          whole block is hidden until the admin actually fills in an address, so
-          the page never shows a placeholder location as if it were real. */}
-      {(business.address || business.city || business.mapEmbedUrl) && (
+      {/* Location — comes straight from business_settings. The whole block is
+          hidden until the admin actually fills in an address, so the page never
+          shows a placeholder location as if it were real. */}
+      {locationLabel && (
         <div className="mt-12">
           <h2 className="text-xl font-bold text-champagne font-devanagari mb-4">हमारा स्थान</h2>
-          <div className="relative aspect-video rounded-2xl overflow-hidden border border-gold/20 bg-bg-purple">
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-0">
+          <div className="relative rounded-2xl overflow-hidden border border-gold/20 bg-bg-purple">
+            <div className="flex flex-col items-center justify-center gap-3 py-12 px-6">
               <MapPin size={40} className="text-gold opacity-40" />
-              {locationLabel && (
-                <p className="text-text-muted font-devanagari text-center px-4">{locationLabel}</p>
-              )}
+              <p className="text-text-muted font-devanagari text-center">{locationLabel}</p>
             </div>
-            {business.mapEmbedUrl && (
-              <iframe
-                src={business.mapEmbedUrl}
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title={`महादेव डेकोरेशन${locationLabel ? ` — ${locationLabel}` : ''} का नक्शा`}
-                className="relative z-10"
-              />
-            )}
           </div>
         </div>
       )}

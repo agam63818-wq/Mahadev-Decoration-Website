@@ -42,7 +42,7 @@ export function useContactAvailability() {
   const settings = useBusinessSettings()
   const phone = settings.phone?.trim() ?? ''
   const whatsapp = settings.whatsapp?.trim() ?? ''
-  const address = settings.address?.trim() || settings.addressHindi?.trim() || ''
+  const address = settings.address?.trim() ?? ''
 
   return {
     phone,

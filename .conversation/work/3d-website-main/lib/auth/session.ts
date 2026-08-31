@@ -23,13 +23,17 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   if (error || !user) return null
 
+  // Live schema note: the column is profiles.full_name (verified against the
+  // live PostgREST spec). Querying a non-existent column makes PostgREST
+  // return an error and `data` null — which silently demoted the admin to
+  // 'customer' and bounced every login to /admin/login?reason=not-admin.
   const { data } = await supabase
     .from('profiles')
-    .select('role, display_name')
+    .select('role, full_name')
     .eq('id', user.id)
     .maybeSingle()
 
-  const profile = data as { role: string | null; display_name: string | null } | null
+  const profile = data as { role: string | null; full_name: string | null } | null
 
   return {
     id: user.id,
@@ -37,7 +41,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     // Default to the least-privileged role: a missing profile row must never
     // be treated as an admin.
     role: (profile?.role as UserRole | null) ?? 'customer',
-    displayName: profile?.display_name ?? null,
+    displayName: profile?.full_name ?? null,
   }
 }
 

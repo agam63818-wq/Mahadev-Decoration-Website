@@ -11,6 +11,11 @@ import { getAdminUser } from '@/lib/auth/session'
 // guard protects page *navigation*; Server Actions are separately callable
 // endpoints, so they must authorise independently — a guard on the page alone
 // would leave these writable by anyone who can POST.
+//
+// Live-schema notes (verified against the live PostgREST spec):
+// - portfolio_items has NO slug/tags columns — the row `id` is the URL id.
+// - portfolio_media has NO is_cover column — the cover is the image with the
+//   lowest sort_order, so "set cover" = move that image to the front.
 
 export interface ActionResult {
   ok: boolean
@@ -23,10 +28,10 @@ const PORTFOLIO_BUCKET = 'portfolio'
 type PortfolioMediaUpdate = Database['public']['Tables']['portfolio_media']['Update']
 
 /** Paths whose cached output must be dropped so public edits show immediately. */
-function revalidatePublicPortfolio(slug?: string) {
+function revalidatePublicPortfolio(itemId?: string) {
   revalidatePath('/')
   revalidatePath('/gallery')
-  if (slug) revalidatePath(`/gallery/${slug}`)
+  if (itemId) revalidatePath(`/gallery/${itemId}`)
   revalidatePath('/admin/portfolio')
 }
 
@@ -42,17 +47,106 @@ async function requireAdminClient() {
   return { error: null, supabase }
 }
 
+// ─── Portfolio categories (public gallery filter pills) ─────────────────────
+
+const categorySchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().trim().min(1, 'कैटेगरी का नाम ज़रूरी है'),
+  slug: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9-]*$/, 'स्लग में सिर्फ़ छोटे अंग्रेज़ी अक्षर, अंक और डैश चलेंगे')
+    .optional(),
+  sortOrder: z.number().int().optional(),
+})
+
+function slugify(input: string): string {
+  const ascii = input
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+  // Hindi names slugify to an empty string, so fall back to a stable unique id.
+  return ascii.length > 0 ? ascii : `cat-${Date.now().toString(36)}`
+}
+
+export async function savePortfolioCategory(input: unknown): Promise<ActionResult> {
+  const parsed = categorySchema.safeParse(input)
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.errors[0]?.message ?? 'अमान्य जानकारी' }
+  }
+  const { error: authError, supabase } = await requireAdminClient()
+  if (authError || !supabase) return { ok: false, error: authError ?? 'Unavailable' }
+
+  const v = parsed.data
+
+  if (v.id) {
+    const { error } = await supabase
+      .from('portfolio_categories')
+      .update({ name: v.name })
+      .eq('id', v.id)
+    if (error) return { ok: false, error: error.message }
+    revalidatePublicPortfolio()
+    return { ok: true, id: v.id }
+  }
+
+  // New category goes to the end of the list unless a sort order was given.
+  const { data: last } = await supabase
+    .from('portfolio_categories')
+    .select('sort_order')
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const nextSort = v.sortOrder ?? (((last as { sort_order: number } | null)?.sort_order ?? -1) + 1)
+
+  const { data, error } = await supabase
+    .from('portfolio_categories')
+    .insert({ name: v.name, slug: v.slug || slugify(v.name), sort_order: nextSort })
+    .select('id')
+    .single()
+
+  if (error) return { ok: false, error: error.message }
+  revalidatePublicPortfolio()
+  return { ok: true, id: (data as { id: string }).id }
+}
+
+export async function deletePortfolioCategory(id: string): Promise<ActionResult> {
+  const { error: authError, supabase } = await requireAdminClient()
+  if (authError || !supabase) return { ok: false, error: authError ?? 'Unavailable' }
+
+  // Unlink items first so they don't keep a dangling category_id.
+  await supabase.from('portfolio_items').update({ category_id: null }).eq('category_id', id)
+
+  const { error } = await supabase.from('portfolio_categories').delete().eq('id', id)
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePublicPortfolio()
+  return { ok: true }
+}
+
+/** Persist a full reordered category list in one shot (drag-to-reorder). */
+export async function reorderPortfolioCategories(orderedIds: string[]): Promise<ActionResult> {
+  const { error: authError, supabase } = await requireAdminClient()
+  if (authError || !supabase) return { ok: false, error: authError ?? 'Unavailable' }
+
+  for (let i = 0; i < orderedIds.length; i++) {
+    const { error } = await supabase
+      .from('portfolio_categories')
+      .update({ sort_order: i })
+      .eq('id', orderedIds[i])
+    if (error) return { ok: false, error: error.message }
+  }
+
+  revalidatePublicPortfolio()
+  return { ok: true }
+}
+
 // ─── Portfolio item ───────────────────────────────────────────────────────────
 
 const itemSchema = z.object({
   id: z.string().uuid().optional(),
   title: z.string().trim().min(1, 'शीर्षक ज़रूरी है'),
-  slug: z
-    .string()
-    .trim()
-    .min(1)
-    .regex(/^[a-z0-9-]+$/, 'स्लग में सिर्फ़ छोटे अक्षर, अंक और डैश चलेंगे')
-    .optional(),
   eventType: z.string().trim().min(1, 'इवेंट टाइप चुनें'),
   categoryId: z.string().uuid().nullable().optional(),
   location: z.string().trim().optional(),
@@ -63,16 +157,6 @@ const itemSchema = z.object({
   isPublic: z.boolean().optional(),
 })
 
-function slugify(input: string): string {
-  const ascii = input
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-  // Hindi titles slugify to an empty string, so fall back to a stable unique id.
-  return ascii.length > 0 ? ascii : `design-${Date.now().toString(36)}`
-}
-
 export async function savePortfolioItem(input: unknown): Promise<ActionResult> {
   const parsed = itemSchema.safeParse(input)
   if (!parsed.success) {
@@ -82,9 +166,9 @@ export async function savePortfolioItem(input: unknown): Promise<ActionResult> {
   if (authError || !supabase) return { ok: false, error: authError ?? 'Unavailable' }
 
   const v = parsed.data
+  // Only live columns — no slug/tags (the id is the URL identifier).
   const row = {
     title: v.title,
-    slug: v.slug || slugify(v.title),
     event_type: v.eventType,
     category_id: v.categoryId ?? null,
     location: v.location ?? '',
@@ -98,7 +182,7 @@ export async function savePortfolioItem(input: unknown): Promise<ActionResult> {
   if (v.id) {
     const { error } = await supabase.from('portfolio_items').update(row).eq('id', v.id)
     if (error) return { ok: false, error: error.message }
-    revalidatePublicPortfolio(row.slug)
+    revalidatePublicPortfolio(v.id)
     return { ok: true, id: v.id }
   }
 
@@ -109,7 +193,7 @@ export async function savePortfolioItem(input: unknown): Promise<ActionResult> {
     .single()
 
   if (error) return { ok: false, error: error.message }
-  revalidatePublicPortfolio(row.slug)
+  revalidatePublicPortfolio((data as { id: string }).id)
   return { ok: true, id: (data as { id: string }).id }
 }
 
@@ -176,9 +260,26 @@ export async function updatePortfolioMedia(input: unknown): Promise<ActionResult
   return { ok: true, id: v.id }
 }
 
+/** Persist a full reordered image list in one shot (drag-to-reorder). */
+export async function reorderPortfolioMedia(orderedIds: string[]): Promise<ActionResult> {
+  const { error: authError, supabase } = await requireAdminClient()
+  if (authError || !supabase) return { ok: false, error: authError ?? 'Unavailable' }
+
+  for (let i = 0; i < orderedIds.length; i++) {
+    const { error } = await supabase
+      .from('portfolio_media')
+      .update({ sort_order: i })
+      .eq('id', orderedIds[i])
+    if (error) return { ok: false, error: error.message }
+  }
+
+  revalidatePublicPortfolio()
+  return { ok: true }
+}
+
 /**
- * Promote one image to cover. A partial unique index in the DB enforces at most
- * one cover per item, so the previous cover is cleared first.
+ * Promote one image to cover. The cover is derived (lowest sort_order), so
+ * this simply moves the chosen image to the front of the sort order.
  */
 export async function setPortfolioCover(
   itemId: string,
@@ -187,19 +288,26 @@ export async function setPortfolioCover(
   const { error: authError, supabase } = await requireAdminClient()
   if (authError || !supabase) return { ok: false, error: authError ?? 'Unavailable' }
 
-  const { error: clearError } = await supabase
+  const { data: rows } = await supabase
     .from('portfolio_media')
-    .update({ is_cover: false })
+    .select('id')
     .eq('portfolio_item_id', itemId)
-  if (clearError) return { ok: false, error: clearError.message }
+    .order('sort_order', { ascending: true })
 
-  const { error } = await supabase
-    .from('portfolio_media')
-    .update({ is_cover: true })
-    .eq('id', mediaId)
-  if (error) return { ok: false, error: error.message }
+  const ids = ((rows ?? []) as Array<{ id: string }>).map((r) => r.id)
+  if (!ids.includes(mediaId)) return { ok: false, error: 'इमेज नहीं मिली' }
 
-  revalidatePublicPortfolio()
+  // Move the chosen image to the front, keep the rest in their current order.
+  const reordered = [mediaId, ...ids.filter((id) => id !== mediaId)]
+  for (let i = 0; i < reordered.length; i++) {
+    const { error } = await supabase
+      .from('portfolio_media')
+      .update({ sort_order: i })
+      .eq('id', reordered[i])
+    if (error) return { ok: false, error: error.message }
+  }
+
+  revalidatePublicPortfolio(itemId)
   return { ok: true, id: mediaId }
 }
 
@@ -209,11 +317,11 @@ export async function deletePortfolioMedia(mediaId: string): Promise<ActionResul
 
   const { data: row } = await supabase
     .from('portfolio_media')
-    .select('url, portfolio_item_id, is_cover')
+    .select('url, portfolio_item_id')
     .eq('id', mediaId)
     .maybeSingle()
 
-  const media = row as { url: string; portfolio_item_id: string; is_cover: boolean } | null
+  const media = row as { url: string; portfolio_item_id: string } | null
 
   const { error } = await supabase.from('portfolio_media').delete().eq('id', mediaId)
   if (error) return { ok: false, error: error.message }
@@ -222,23 +330,10 @@ export async function deletePortfolioMedia(mediaId: string): Promise<ActionResul
     await supabase.storage.from(PORTFOLIO_BUCKET).remove([media.url])
   }
 
-  // Deleting the cover would leave the gallery card blank — promote the next one.
-  if (media?.is_cover) {
-    const { data: next } = await supabase
-      .from('portfolio_media')
-      .select('id')
-      .eq('portfolio_item_id', media.portfolio_item_id)
-      .order('sort_order', { ascending: true })
-      .limit(1)
-      .maybeSingle()
+  // No cover-promotion needed: the cover is derived (lowest sort_order), so the
+  // next image in order automatically becomes the new cover.
 
-    const nextId = (next as { id: string } | null)?.id
-    if (nextId) {
-      await supabase.from('portfolio_media').update({ is_cover: true }).eq('id', nextId)
-    }
-  }
-
-  revalidatePublicPortfolio()
+  revalidatePublicPortfolio(media?.portfolio_item_id)
   return { ok: true }
 }
 
@@ -278,12 +373,6 @@ export async function uploadPortfolioImage(formData: FormData): Promise<ActionRe
 
   const nextSort = ((last as { sort_order: number } | null)?.sort_order ?? -1) + 1
 
-  // First image of a design automatically becomes the cover.
-  const { count } = await supabase
-    .from('portfolio_media')
-    .select('id', { count: 'exact', head: true })
-    .eq('portfolio_item_id', itemId)
-
   const { data, error } = await supabase
     .from('portfolio_media')
     .insert({
@@ -292,7 +381,6 @@ export async function uploadPortfolioImage(formData: FormData): Promise<ActionRe
       media_type: 'image',
       alt_text: String(formData.get('altText') ?? '') || file.name,
       sort_order: nextSort,
-      is_cover: (count ?? 0) === 0,
       is_bookable: true,
       price: null,
       variant_label: null,
@@ -306,6 +394,6 @@ export async function uploadPortfolioImage(formData: FormData): Promise<ActionRe
     return { ok: false, error: error.message }
   }
 
-  revalidatePublicPortfolio()
+  revalidatePublicPortfolio(itemId)
   return { ok: true, id: (data as { id: string }).id }
 }

@@ -43,32 +43,44 @@ export type ProfileRow = {
   id: string
   /** 'customer' | 'admin' | 'team' — drives the /admin route guard. */
   role: string
-  display_name: string | null
+  /** Live Supabase column is full_name (verified against the live PostgREST spec). */
+  full_name: string | null
   phone: string | null
+  whatsapp: string | null
   email: string | null
+  avatar_url: string | null
   created_at: string
   updated_at: string
 }
 
+/**
+ * Live shape of public.business_settings (verified against the live PostgREST
+ * spec): phone, whatsapp, email, address, business_hours (jsonb),
+ * social_links (jsonb). There are NO city/state/pincode/map_embed_url columns
+ * — writing them makes PostgREST reject the request, which is why settings
+ * saves silently failed before this fix.
+ */
 export type BusinessSettingsRow = {
   id: string
   phone: string | null
   whatsapp: string | null
   email: string | null
   address: string | null
-  city: string | null
-  state: string | null
-  pincode: string | null
+  /** Day-by-day open/close editor state: Array<{day, dayHindi, open, close, isClosed}>. */
   business_hours: Json | null
   /** Open key-value map of platform -> url, so new platforms need no code change. */
   social_links: Json | null
-  map_embed_url: string | null
   updated_at: string
 }
 
+/**
+ * Live shape of public.portfolio_items (verified against the live PostgREST
+ * spec). NOTE: the live table has NO `slug` and NO `tags` column — the URL
+ * identifier is the `id` itself. Querying slug/tags makes PostgREST return an
+ * error, which previously made the whole gallery fall back to seed data.
+ */
 export type PortfolioItemRow = {
   id: string
-  slug: string
   title: string
   category_id: string | null
   event_type: string
@@ -76,7 +88,6 @@ export type PortfolioItemRow = {
   price_range: string | null
   description: string | null
   services_included: string[] | null
-  tags: string[] | null
   is_featured: boolean
   is_public: boolean
   seo_title: string | null
@@ -85,22 +96,26 @@ export type PortfolioItemRow = {
   updated_at: string
 }
 
+/**
+ * Live shape of public.portfolio_media (verified against the live PostgREST
+ * spec). NOTE: there is NO `is_cover` column in the live table — the cover is
+ * derived (the lowest sort_order image), so setting a cover = moving that
+ * image to the front.
+ */
 export type PortfolioMediaRow = {
   id: string
   portfolio_item_id: string
   media_type: string | null
   url: string
   alt_text: string | null
-  width: number | null
-  height: number | null
+  // NOTE: live table has NO width/height columns (verified against the live
+  // PostgREST spec) — the UI falls back to 800x600 defaults.
   is_before_after: boolean | null
   /** Admin-typed label for this look, e.g. "प्रीमियम लुक". Free text. */
   variant_label: string | null
   /** Price of this specific look. null ⇒ plain reference photo (no price badge). */
   price: number | null
   is_bookable: boolean
-  /** Cover image used on the public gallery card. */
-  is_cover: boolean
   sort_order: number
   created_at: string
 }
@@ -169,6 +184,12 @@ export type CustomerRow = {
   created_at: string
 }
 
+/**
+ * Live shape of public.portfolio_categories (verified against the live
+ * PostgREST spec): id, name, slug, sort_order. The public gallery filter
+ * pills come from here, so the admin can add Anniversary/Mandap/Home/etc.
+ * without a code change.
+ */
 export type PortfolioCategoryRow = {
   id: string
   slug: string
@@ -204,24 +225,33 @@ export type ReviewRow = {
   created_at: string
 }
 
+/**
+ * Live shape of public.packages (verified against the live PostgREST spec):
+ * `customizable`, `is_featured`, `setup_time_minutes` — not the older
+ * customization_available / featured / estimated_setup_time names.
+ */
 export type PackageRow = {
   id: string
   slug: string
   name: string
-  name_en: string | null
-  event_type: string | null
+  description: string | null
   starting_price: number | null
-  price_range: string | null
-  inclusions: string[] | null
-  estimated_setup_time: string | null
+  price_max: number | null
+  setup_time_minutes: number | null
   decoration_area: string | null
-  customization_available: boolean
-  image_url: string | null
-  image_alt: string | null
-  featured: boolean
+  customizable: boolean
+  is_featured: boolean
   is_active: boolean
   created_at: string
   updated_at: string
+}
+
+/** Bullet-point inclusion rows belonging to a package. */
+export type PackageItemRow = {
+  id: string
+  package_id: string
+  label: string
+  sort_order: number
 }
 
 // ─── Database ─────────────────────────────────────────────────────────────────
@@ -240,6 +270,7 @@ export type Database = {
       service_areas: TableOf<ServiceAreaRow>
       reviews: TableOf<ReviewRow>
       packages: TableOf<PackageRow>
+      package_items: TableOf<PackageItemRow>
     }
     Views: Record<string, never>
     Functions: {

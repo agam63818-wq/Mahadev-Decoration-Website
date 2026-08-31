@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Check, Clock, Maximize2, Sparkles } from 'lucide-react'
-import { getPackageBySlug, getAllPackages } from '@/services/packages'
+import { getPackageBySlug } from '@/services/packages'
 import { buildBookingUrl, buildWhatsAppUrl, formatPrice } from '@/utils/booking'
 import { getBusinessSettings } from '@/services/business'
 import { SectionFlourish } from '@/components/ui/SectionFlourish'
@@ -11,10 +11,10 @@ interface Props {
   params: { slug: string }
 }
 
-export async function generateStaticParams() {
-  const packages = await getAllPackages()
-  return packages.map((pkg) => ({ slug: pkg.slug }))
-}
+// Packages are admin-editable at /admin/packages — render on every request so
+// admin changes appear immediately and newly created packages resolve without
+// a redeploy (no generateStaticParams).
+export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const pkg = await getPackageBySlug(params.slug)

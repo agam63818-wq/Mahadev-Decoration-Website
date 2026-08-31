@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   AlertCircle,
   Check,
+  Clock,
   Facebook,
   Instagram,
   Loader2,
@@ -14,6 +15,8 @@ import {
   Trash2,
 } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
+import { Toast } from '@/components/ui/Toast'
+import type { BusinessHours } from '@/types'
 import { saveBusinessSettings } from './actions'
 
 interface SettingsValues {
@@ -21,10 +24,7 @@ interface SettingsValues {
   whatsapp: string
   email: string
   address: string
-  city: string
-  state: string
-  pincode: string
-  mapEmbedUrl: string
+  businessHours: BusinessHours[]
   socialLinks: Record<string, string>
 }
 
@@ -43,11 +43,20 @@ const KNOWN_PLATFORMS = [
   { key: 'instagram', label: 'Instagram URL', icon: Instagram },
 ] as const
 
+const PHONE_RE = /^\+?[\d\s-]{7,18}$/
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 export function SettingsForm({ initial, supabaseReady }: SettingsFormProps) {
   const router = useRouter()
   const [values, setValues] = useState<SettingsValues>(initial)
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [toast, setToast] = useState<{
+    open: boolean
+    type: 'success' | 'error'
+    title: string
+    description?: string
+  }>({ open: false, type: 'success', title: '' })
 
   // Any platform the admin added beyond the two named ones.
   const [extraLinks, setExtraLinks] = useState<Array<{ key: string; url: string }>>(() =>
@@ -67,10 +76,41 @@ export function SettingsForm({ initial, supabaseReady }: SettingsFormProps) {
     setValues((v) => ({ ...v, socialLinks: { ...v.socialLinks, [key]: url } }))
   }
 
+  function setHour(index: number, patch: Partial<BusinessHours>) {
+    setValues((v) => ({
+      ...v,
+      businessHours: v.businessHours.map((h, i) => (i === index ? { ...h, ...patch } : h)),
+    }))
+  }
+
+  /** Client-side check mirroring the server rules, so errors surface instantly. */
+  function validate(): boolean {
+    const errors: Record<string, string> = {}
+    if (values.phone.trim() && !PHONE_RE.test(values.phone.trim())) {
+      errors.phone = 'सही फ़ोन नंबर डालें'
+    }
+    if (values.whatsapp.trim() && !PHONE_RE.test(values.whatsapp.trim())) {
+      errors.whatsapp = 'सही WhatsApp नंबर डालें'
+    }
+    if (values.email.trim() && !EMAIL_RE.test(values.email.trim())) {
+      errors.email = 'सही ईमेल पता डालें'
+    }
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!validate()) {
+      setToast({
+        open: true,
+        type: 'error',
+        title: 'कुछ जानकारी सही नहीं है',
+        description: 'लाल निशान वाले फ़ील्ड ठीक करके दोबारा सेव करें।',
+      })
+      return
+    }
     setSaving(true)
-    setMessage(null)
 
     const socialLinks: Record<string, string> = {}
     for (const p of KNOWN_PLATFORMS) {
@@ -85,10 +125,20 @@ export function SettingsForm({ initial, supabaseReady }: SettingsFormProps) {
     setSaving(false)
 
     if (!result.ok) {
-      setMessage({ kind: 'err', text: result.error ?? 'सेव नहीं हुआ' })
+      setToast({
+        open: true,
+        type: 'error',
+        title: 'सेव नहीं हुआ',
+        description: result.error ?? 'कृपया दोबारा कोशिश करें।',
+      })
       return
     }
-    setMessage({ kind: 'ok', text: 'जानकारी सेव हो गई — पूरी वेबसाइट पर अपडेट हो गई।' })
+    setToast({
+      open: true,
+      type: 'success',
+      title: 'जानकारी सेव हो गई',
+      description: 'पूरी वेबसाइट पर अपडेट हो गई — नेवबार, फुटर, संपर्क पेज, सब कुछ।',
+    })
     router.refresh()
   }
 
@@ -131,19 +181,6 @@ export function SettingsForm({ initial, supabaseReady }: SettingsFormProps) {
         </div>
       )}
 
-      {message && (
-        <div
-          className={`flex items-center gap-2 rounded-xl border p-3 text-sm font-devanagari ${
-            message.kind === 'ok'
-              ? 'border-emerald-500/30 bg-emerald-950/30 text-emerald-200'
-              : 'border-red-500/30 bg-red-950/30 text-red-200'
-          }`}
-        >
-          {message.kind === 'ok' ? <Check size={16} /> : <AlertCircle size={16} />}
-          {message.text}
-        </div>
-      )}
-
       {/* Contact */}
       <section className="space-y-4 rounded-2xl border border-gold/20 bg-bg-purple/25 p-6">
         <h3 className="font-devanagari flex items-center gap-2 font-semibold text-champagne">
@@ -152,7 +189,7 @@ export function SettingsForm({ initial, supabaseReady }: SettingsFormProps) {
         </h3>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="फ़ोन नंबर" hint="जैसे: 7091514078">
+          <Field label="फ़ोन नंबर" hint="जैसे: 7091514078" error={fieldErrors.phone}>
             <Input
               value={values.phone}
               onChange={(e) => set('phone', e.target.value)}
@@ -160,7 +197,11 @@ export function SettingsForm({ initial, supabaseReady }: SettingsFormProps) {
               placeholder="अपना फ़ोन नंबर डालें"
             />
           </Field>
-          <Field label="WhatsApp नंबर" hint="देश कोड के साथ, जैसे: 917091514078">
+          <Field
+            label="WhatsApp नंबर"
+            hint="देश कोड के साथ, जैसे: 917091514078"
+            error={fieldErrors.whatsapp}
+          >
             <Input
               value={values.whatsapp}
               onChange={(e) => set('whatsapp', e.target.value)}
@@ -168,7 +209,7 @@ export function SettingsForm({ initial, supabaseReady }: SettingsFormProps) {
               placeholder="अपना WhatsApp नंबर डालें"
             />
           </Field>
-          <Field label="ईमेल">
+          <Field label="ईमेल" error={fieldErrors.email}>
             <Input
               value={values.email}
               onChange={(e) => set('email', e.target.value)}
@@ -186,39 +227,72 @@ export function SettingsForm({ initial, supabaseReady }: SettingsFormProps) {
           पता
         </h3>
 
-        <Field label="स्टूडियो / दुकान का पता">
+        <Field
+          label="स्टूडियो / दुकान का पूरा पता"
+          hint="खाली रहने तक वेबसाइट पर पता नहीं दिखेगा — कोई नकली पता कभी नहीं दिखाया जाता।"
+        >
           <textarea
             value={values.address}
             onChange={(e) => set('address', e.target.value)}
-            rows={2}
+            rows={3}
             className="font-devanagari w-full rounded-xl border border-gold/20 bg-bg-void/50 px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-gold focus:outline-none"
-            placeholder="अपना पूरा पता डालें"
+            placeholder="जैसे: दुकान नं. 12, मेन रोड, आपका शहर, राज्य — पिनकोड"
           />
         </Field>
+      </section>
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="शहर">
-            <Input value={values.city} onChange={(e) => set('city', e.target.value)} />
-          </Field>
-          <Field label="राज्य">
-            <Input value={values.state} onChange={(e) => set('state', e.target.value)} />
-          </Field>
-          <Field label="पिनकोड">
-            <Input
-              value={values.pincode}
-              onChange={(e) => set('pincode', e.target.value)}
-              inputMode="numeric"
-            />
-          </Field>
+      {/* Business hours — day-by-day open/close editor */}
+      <section className="space-y-4 rounded-2xl border border-gold/20 bg-bg-purple/25 p-6">
+        <h3 className="font-devanagari flex items-center gap-2 font-semibold text-champagne">
+          <Clock size={16} className="text-gold" />
+          काम का समय
+        </h3>
+        <p className="font-devanagari text-xs text-text-muted">
+          हर दिन का खुलने-बंद होने का समय सेट करें। बंद वाले दिन वेबसाइट पर &quot;बंद&quot; दिखेगा।
+        </p>
+
+        <div className="space-y-2">
+          {values.businessHours.map((h, i) => (
+            <div
+              key={h.day || i}
+              className="flex flex-wrap items-center gap-3 rounded-xl border border-gold/10 bg-bg-void/40 px-3 py-2"
+            >
+              <span className="font-devanagari w-24 text-sm text-text-primary">
+                {h.dayHindi || h.day}
+              </span>
+              {h.isClosed ? (
+                <span className="font-devanagari text-sm text-text-muted">बंद</span>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="time"
+                    value={h.open}
+                    onChange={(e) => setHour(i, { open: e.target.value })}
+                    aria-label={`${h.dayHindi || h.day} खुलने का समय`}
+                    className="rounded-lg border border-gold/20 bg-bg-void/60 px-2 py-1 text-sm text-text-primary focus:border-gold focus:outline-none [color-scheme:dark]"
+                  />
+                  <span className="text-text-muted">—</span>
+                  <input
+                    type="time"
+                    value={h.close}
+                    onChange={(e) => setHour(i, { close: e.target.value })}
+                    aria-label={`${h.dayHindi || h.day} बंद होने का समय`}
+                    className="rounded-lg border border-gold/20 bg-bg-void/60 px-2 py-1 text-sm text-text-primary focus:border-gold focus:outline-none [color-scheme:dark]"
+                  />
+                </div>
+              )}
+              <label className="font-devanagari ml-auto inline-flex cursor-pointer items-center gap-2 text-xs text-text-muted">
+                <input
+                  type="checkbox"
+                  checked={h.isClosed}
+                  onChange={(e) => setHour(i, { isClosed: e.target.checked })}
+                  className="h-4 w-4 rounded border-gold/30 bg-bg-void accent-[#d4af37]"
+                />
+                इस दिन बंद
+              </label>
+            </div>
+          ))}
         </div>
-
-        <Field label="Google Maps embed URL (वैकल्पिक)">
-          <Input
-            value={values.mapEmbedUrl}
-            onChange={(e) => set('mapEmbedUrl', e.target.value)}
-            placeholder="https://www.google.com/maps/embed?..."
-          />
-        </Field>
       </section>
 
       {/* Social */}
@@ -297,6 +371,14 @@ export function SettingsForm({ initial, supabaseReady }: SettingsFormProps) {
         {saving ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
         {saving ? 'सेव हो रहा है…' : 'सेव करें'}
       </button>
+
+      <Toast
+        open={toast.open}
+        onClose={() => setToast((t) => ({ ...t, open: false }))}
+        type={toast.type}
+        title={toast.title}
+        description={toast.description}
+      />
     </form>
   )
 }
@@ -304,17 +386,24 @@ export function SettingsForm({ initial, supabaseReady }: SettingsFormProps) {
 function Field({
   label,
   hint,
+  error,
   children,
 }: {
   label: string
   hint?: string
+  error?: string
   children: React.ReactNode
 }) {
   return (
     <label className="block">
       <span className="font-devanagari mb-1.5 block text-sm text-text-primary">{label}</span>
       {children}
-      {hint && <span className="font-devanagari mt-1 block text-xs text-text-muted">{hint}</span>}
+      {error && (
+        <span className="font-devanagari mt-1 block text-xs text-red-300">{error}</span>
+      )}
+      {!error && hint && (
+        <span className="font-devanagari mt-1 block text-xs text-text-muted">{hint}</span>
+      )}
     </label>
   )
 }

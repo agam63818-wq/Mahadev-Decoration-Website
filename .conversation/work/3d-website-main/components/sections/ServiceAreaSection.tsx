@@ -114,24 +114,29 @@ export function ServiceAreaSection({ areas, business }: ServiceAreaSectionProps)
                   variant="secondary"
                   size="sm"
                   className="font-devanagari gap-1.5"
-                  onClick={() => window.open(`https://wa.me/${business.whatsapp}`, '_blank')}
+                  onClick={() => business.whatsapp && window.open(`https://wa.me/${business.whatsapp}`, '_blank')}
                 >
                   <span className="text-emerald-400 text-sm">💬</span> WhatsApp करें
                 </Button>
               </div>
             </div>
-            {/* Detail chips */}
+            {/* Detail chips — each one renders only when the admin has actually
+                filled in that value, so nothing invented is ever shown. */}
             <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-gold/10">
               {[
-                { icon: Phone, label: `📞 ${business.phone}` },
-                { icon: Clock, label: `🕐 ${business.city}, ${business.state}` },
-                { icon: Globe, label: `🌐 ${business.city}, ${business.state}` },
-              ].map(({ icon: Icn, label }) => (
-                <div key={label} className="flex items-center gap-2 text-text-muted text-sm font-devanagari">
-                  <Icn size={14} className="text-gold/60" />
-                  <span>{label}</span>
-                </div>
-              ))}
+                business.phone ? { icon: Phone, label: `📞 ${business.phone}` } : null,
+                { icon: Clock, label: `🕐 ${homeBase.name} — ${homeBase.nameEn}` },
+                business.address.trim()
+                  ? { icon: Globe, label: `🌐 ${business.address}` }
+                  : null,
+              ]
+                .filter((chip): chip is { icon: typeof Phone; label: string } => chip !== null)
+                .map(({ icon: Icn, label }) => (
+                  <div key={label} className="flex items-center gap-2 text-text-muted text-sm font-devanagari">
+                    <Icn size={14} className="text-gold/60" />
+                    <span>{label}</span>
+                  </div>
+                ))}
             </div>
           </motion.div>
         )}
