@@ -9,9 +9,12 @@ import {
   Check,
   Eye,
   EyeOff,
+  GripVertical,
   Loader2,
+  Pencil,
   Plus,
   Star,
+  Tag,
   Trash2,
   Upload,
   X,
@@ -24,6 +27,10 @@ import {
   setPortfolioCover,
   deletePortfolioMedia,
   uploadPortfolioImage,
+  reorderPortfolioMedia,
+  savePortfolioCategory,
+  deletePortfolioCategory,
+  reorderPortfolioCategories,
 } from './actions'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -41,8 +48,10 @@ export interface AdminPortfolioMedia {
 
 export interface AdminPortfolioItem {
   id: string
+  /** The live table has no slug column — this carries the item id. */
   slug: string
   title: string
+  categoryId: string | null
   eventType: string
   location: string
   priceRange: string
@@ -53,8 +62,16 @@ export interface AdminPortfolioItem {
   media: AdminPortfolioMedia[]
 }
 
+export interface AdminPortfolioCategory {
+  id: string
+  slug: string
+  name: string
+  sortOrder: number
+}
+
 interface PortfolioManagerProps {
   initialItems: AdminPortfolioItem[]
+  initialCategories: AdminPortfolioCategory[]
   supabaseReady: boolean
 }
 
@@ -90,6 +107,7 @@ const EVENT_LABELS: Record<string, string> = {
 
 const emptyForm = {
   title: '',
+  categoryId: '' as string,
   eventType: 'wedding',
   location: '',
   priceRange: '',
@@ -101,7 +119,11 @@ const emptyForm = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function PortfolioManager({ initialItems, supabaseReady }: PortfolioManagerProps) {
+export function PortfolioManager({
+  initialItems,
+  initialCategories,
+  supabaseReady,
+}: PortfolioManagerProps) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
@@ -111,6 +133,7 @@ export function PortfolioManager({ initialItems, supabaseReady }: PortfolioManag
   const [form, setForm] = useState(emptyForm)
 
   const items = initialItems
+  const categories = initialCategories
 
   function notify(kind: 'ok' | 'err', text: string) {
     setMessage({ kind, text })
@@ -132,6 +155,7 @@ export function PortfolioManager({ initialItems, supabaseReady }: PortfolioManag
     setEditingId(item.id)
     setForm({
       title: item.title,
+      categoryId: item.categoryId ?? '',
       eventType: item.eventType || 'wedding',
       location: item.location,
       priceRange: item.priceRange,
@@ -148,6 +172,7 @@ export function PortfolioManager({ initialItems, supabaseReady }: PortfolioManag
     const result = await savePortfolioItem({
       id: editingId ?? undefined,
       title: form.title,
+      categoryId: form.categoryId || null,
       eventType: form.eventType,
       location: form.location,
       priceRange: form.priceRange,
@@ -231,6 +256,9 @@ export function PortfolioManager({ initialItems, supabaseReady }: PortfolioManag
         </div>
       )}
 
+      {/* Categories — the public gallery filter pills come from this list. */}
+      <CategoriesPanel categories={categories} notify={notify} onChanged={refresh} />
+
       {/* Item form */}
       {showForm && (
         <form
@@ -259,6 +287,24 @@ export function PortfolioManager({ initialItems, supabaseReady }: PortfolioManag
                 placeholder="शाही वेडिंग — बेगूसराय"
                 required
               />
+            </Field>
+
+            <Field label="कैटेगरी">
+              <select
+                value={form.categoryId}
+                onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+                className="font-devanagari w-full rounded-xl border border-gold/20 bg-bg-void/50 px-4 py-2.5 text-sm text-text-primary focus:border-gold focus:outline-none"
+              >
+                <option value="">— बिना कैटेगरी —</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <span className="font-devanagari mt-1 block text-xs text-text-muted">
+                गैलरी के फ़िल्टर बटन इन्हीं कैटेगरी से बनते हैं — ऊपर &quot;कैटेगरी&quot; सेक्शन से नई जोड़ें।
+              </span>
             </Field>
 
             <Field label="इवेंट टाइप *">
@@ -323,6 +369,16 @@ export function PortfolioManager({ initialItems, supabaseReady }: PortfolioManag
             />
           </div>
 
+          {/* Live preview — exactly how the public gallery card will look. */}
+          <GalleryCardPreview
+            title={form.title}
+            categoryName={categories.find((c) => c.id === form.categoryId)?.name ?? ''}
+            eventType={form.eventType}
+            location={form.location}
+            priceRange={form.priceRange}
+            isFeatured={form.isFeatured}
+          />
+
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
@@ -358,6 +414,7 @@ export function PortfolioManager({ initialItems, supabaseReady }: PortfolioManag
           <ItemCard
             key={item.id}
             item={item}
+            categoryName={categories.find((c) => c.id === item.categoryId)?.name ?? ''}
             onEdit={() => openEdit(item)}
             onDelete={() => handleDeleteItem(item)}
             onChanged={refresh}
@@ -369,16 +426,232 @@ export function PortfolioManager({ initialItems, supabaseReady }: PortfolioManag
   )
 }
 
+// ─── Categories panel (public gallery filter pills) ───────────────────────────
+
+function CategoriesPanel({
+  categories,
+  notify,
+  onChanged,
+}: {
+  categories: AdminPortfolioCategory[]
+  notify: (kind: 'ok' | 'err', text: string) => void
+  onChanged: () => void
+}) {
+  const [newName, setNewName] = useState('')
+  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const dragId = useRef<string | null>(null)
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newName.trim()) return
+    setBusy(true)
+    const result = await savePortfolioCategory({ name: newName.trim() })
+    setBusy(false)
+    if (!result.ok) return notify('err', result.error ?? 'सेव नहीं हुआ')
+    notify('ok', 'कैटेगरी जुड़ गई')
+    setNewName('')
+    onChanged()
+  }
+
+  async function saveEdit() {
+    if (!editing) return
+    setBusy(true)
+    const result = await savePortfolioCategory({ id: editing.id, name: editing.name.trim() })
+    setBusy(false)
+    if (!result.ok) return notify('err', result.error ?? 'सेव नहीं हुआ')
+    notify('ok', 'कैटेगरी अपडेट हो गई')
+    setEditing(null)
+    onChanged()
+  }
+
+  async function remove(cat: AdminPortfolioCategory) {
+    if (!window.confirm(`कैटेगरी "${cat.name}" हटा दी जाएगी। इसमें जुड़े डिज़ाइन बिना कैटेगरी के रह जाएँगे। जारी रखें?`)) return
+    setBusy(true)
+    const result = await deletePortfolioCategory(cat.id)
+    setBusy(false)
+    if (!result.ok) return notify('err', result.error ?? 'डिलीट नहीं हुआ')
+    notify('ok', 'कैटेगरी हटा दी गई')
+    onChanged()
+  }
+
+  async function handleDrop(targetId: string) {
+    const fromId = dragId.current
+    dragId.current = null
+    if (!fromId || fromId === targetId) return
+
+    const ids = categories.map((c) => c.id)
+    const from = ids.indexOf(fromId)
+    const to = ids.indexOf(targetId)
+    if (from < 0 || to < 0) return
+    ids.splice(to, 0, ids.splice(from, 1)[0])
+
+    setBusy(true)
+    const result = await reorderPortfolioCategories(ids)
+    setBusy(false)
+    if (!result.ok) return notify('err', result.error ?? 'क्रम सेव नहीं हुआ')
+    notify('ok', 'क्रम बदल गया')
+    onChanged()
+  }
+
+  return (
+    <section className="space-y-4 rounded-2xl border border-gold/20 bg-bg-purple/25 p-6">
+      <h3 className="font-devanagari flex items-center gap-2 font-semibold text-champagne">
+        <Tag size={16} className="text-gold" />
+        कैटेगरी (गैलरी फ़िल्टर)
+      </h3>
+      <p className="font-devanagari text-xs text-text-muted">
+        ये कैटेगरी पब्लिक गैलरी पर फ़िल्टर बटन के रूप में दिखती हैं — जोड़ें, नाम बदलें,
+        खींचकर क्रम बदलें या हटाएँ। कोई कोड बदलने की ज़रूरत नहीं।
+      </p>
+
+      <div className="space-y-2">
+        {categories.length === 0 && (
+          <p className="font-devanagari text-sm text-text-muted">
+            अभी कोई कैटेगरी नहीं — नीचे से पहली कैटेगरी जोड़ें (जैसे वेडिंग, बर्थडे, मंडप)।
+          </p>
+        )}
+        {categories.map((cat) => (
+          <div
+            key={cat.id}
+            draggable
+            onDragStart={() => {
+              dragId.current = cat.id
+            }}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={() => handleDrop(cat.id)}
+            className="flex items-center gap-2 rounded-xl border border-gold/10 bg-bg-void/40 px-3 py-2"
+          >
+            <GripVertical size={14} className="flex-shrink-0 cursor-grab text-text-muted/60" />
+            {editing?.id === cat.id ? (
+              <>
+                <Input
+                  value={editing.name}
+                  onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                  className="max-w-[220px] py-1.5 text-sm"
+                  autoFocus
+                />
+                <button
+                  onClick={saveEdit}
+                  disabled={busy}
+                  className="font-devanagari inline-flex items-center gap-1 rounded-lg bg-gold px-3 py-1.5 text-xs font-semibold text-bg-void transition hover:brightness-110 disabled:opacity-60"
+                >
+                  <Check size={12} />
+                  सेव
+                </button>
+                <button
+                  onClick={() => setEditing(null)}
+                  className="font-devanagari rounded-lg border border-gold/25 px-3 py-1.5 text-xs text-text-muted transition hover:text-gold"
+                >
+                  रद्द
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="font-devanagari flex-1 text-sm text-text-primary">{cat.name}</span>
+                <button
+                  onClick={() => setEditing({ id: cat.id, name: cat.name })}
+                  aria-label="नाम बदलें"
+                  className="rounded-lg border border-gold/25 p-1.5 text-text-muted transition hover:text-gold"
+                >
+                  <Pencil size={12} />
+                </button>
+                <button
+                  onClick={() => remove(cat)}
+                  disabled={busy}
+                  aria-label="कैटेगरी हटाएँ"
+                  className="rounded-lg border border-red-500/25 p-1.5 text-red-300 transition hover:bg-red-950/40 disabled:opacity-60"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <form onSubmit={add} className="flex items-center gap-2 border-t border-gold/10 pt-4">
+        <Input
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          placeholder="नई कैटेगरी — जैसे: एनिवर्सरी, मंडप, लाइटिंग"
+          className="max-w-xs"
+        />
+        <button
+          type="submit"
+          disabled={busy || !newName.trim()}
+          className="font-devanagari inline-flex items-center gap-1.5 rounded-xl bg-gold px-4 py-2.5 text-sm font-semibold text-bg-void transition hover:brightness-110 disabled:opacity-60"
+        >
+          {busy ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+          जोड़ें
+        </button>
+      </form>
+    </section>
+  )
+}
+
+// ─── Live gallery-card preview ────────────────────────────────────────────────
+
+function GalleryCardPreview({
+  title,
+  categoryName,
+  eventType,
+  location,
+  priceRange,
+  isFeatured,
+}: {
+  title: string
+  categoryName: string
+  eventType: string
+  location: string
+  priceRange: string
+  isFeatured: boolean
+}) {
+  return (
+    <div className="rounded-xl border border-gold/10 bg-bg-void/30 p-4">
+      <p className="font-devanagari mb-3 text-xs font-semibold uppercase tracking-wider text-gold/70">
+        लाइव प्रीव्यू — गैलरी कार्ड
+      </p>
+      <div className="max-w-xs overflow-hidden rounded-2xl border border-gold/20 bg-bg-purple/40">
+        <div className="flex h-40 items-center justify-center bg-gradient-to-br from-bg-purple to-bg-void text-text-muted/50">
+          <Eye size={28} />
+        </div>
+        <div className="space-y-1 p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-devanagari font-semibold text-champagne">
+              {title.trim() || 'शीर्षक यहाँ दिखेगा'}
+            </p>
+            {isFeatured && (
+              <span className="rounded-full border border-gold/40 bg-gold/10 px-2 py-0.5 text-[10px] text-gold font-devanagari">
+                फीचर्ड
+              </span>
+            )}
+          </div>
+          <p className="font-devanagari text-xs text-text-muted">
+            {categoryName || EVENT_LABELS[eventType] || eventType}
+            {location.trim() ? ` · ${location.trim()}` : ''}
+          </p>
+          {priceRange.trim() && (
+            <p className="text-xs font-semibold text-gold">{priceRange.trim()}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Item card with per-image pricing editor ──────────────────────────────────
 
 function ItemCard({
   item,
+  categoryName,
   onEdit,
   onDelete,
   onChanged,
   notify,
 }: {
   item: AdminPortfolioItem
+  categoryName: string
   onEdit: () => void
   onDelete: () => void
   onChanged: () => void
@@ -387,6 +660,8 @@ function ItemCard({
   const fileInput = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  const dragMediaId = useRef<string | null>(null)
+  const [reordering, setReordering] = useState(false)
 
   async function uploadFiles(files: FileList | File[]) {
     const list = Array.from(files).filter((f) => f.type.startsWith('image/'))
@@ -411,6 +686,26 @@ function ItemCard({
     if (ok > 0) notify('ok', `${ok} तस्वीर अपलोड हो गई`)
     if (failures.length > 0) notify('err', failures[0])
     if (ok > 0) onChanged()
+  }
+
+  /** Drop one image onto another to reorder; new order persists to sort_order. */
+  async function handleMediaDrop(targetId: string) {
+    const fromId = dragMediaId.current
+    dragMediaId.current = null
+    if (!fromId || fromId === targetId) return
+
+    const ids = item.media.map((m) => m.id)
+    const from = ids.indexOf(fromId)
+    const to = ids.indexOf(targetId)
+    if (from < 0 || to < 0) return
+    ids.splice(to, 0, ids.splice(from, 1)[0])
+
+    setReordering(true)
+    const result = await reorderPortfolioMedia(ids)
+    setReordering(false)
+    if (!result.ok) return notify('err', result.error ?? 'क्रम सेव नहीं हुआ')
+    notify('ok', 'तस्वीरों का क्रम बदल गया')
+    onChanged()
   }
 
   return (
@@ -439,7 +734,7 @@ function ItemCard({
             </span>
           </div>
           <p className="mt-1 text-xs text-text-muted">
-            {EVENT_LABELS[item.eventType] ?? item.eventType}
+            {categoryName || EVENT_LABELS[item.eventType] || item.eventType}
             {item.location ? ` · ${item.location}` : ''} · {item.media.length} तस्वीर
           </p>
         </div>
@@ -510,21 +805,30 @@ function ItemCard({
         </p>
       </div>
 
-      {/* Per-image pricing rows */}
+      {/* Per-image pricing rows — drag the handle to reorder. */}
       {item.media.length === 0 ? (
         <p className="font-devanagari text-center text-sm text-text-muted">
           अभी कोई तस्वीर नहीं — ऊपर से अपलोड करें।
         </p>
       ) : (
-        <div className="space-y-3">
+        <div className={`space-y-3 ${reordering ? 'opacity-60' : ''}`}>
           {item.media.map((media) => (
-            <MediaRow
+            <div
               key={media.id}
-              itemId={item.id}
-              media={media}
-              onChanged={onChanged}
-              notify={notify}
-            />
+              draggable
+              onDragStart={() => {
+                dragMediaId.current = media.id
+              }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => handleMediaDrop(media.id)}
+            >
+              <MediaRow
+                itemId={item.id}
+                media={media}
+                onChanged={onChanged}
+                notify={notify}
+              />
+            </div>
           ))}
         </div>
       )}
@@ -548,14 +852,12 @@ function MediaRow({
   const [label, setLabel] = useState(media.variantLabel)
   const [price, setPrice] = useState(media.price == null ? '' : String(media.price))
   const [bookable, setBookable] = useState(media.isBookable)
-  const [sort, setSort] = useState(String(media.sortOrder))
   const [saving, setSaving] = useState(false)
 
   const dirty =
     label !== media.variantLabel ||
     price !== (media.price == null ? '' : String(media.price)) ||
-    bookable !== media.isBookable ||
-    sort !== String(media.sortOrder)
+    bookable !== media.isBookable
 
   async function save() {
     // Blank price means "reference photo only", which is null — not 0.
@@ -571,7 +873,6 @@ function MediaRow({
       variantLabel: label.trim() || null,
       price: parsedPrice,
       isBookable: bookable,
-      sortOrder: Number(sort) || 0,
     })
     setSaving(false)
 
@@ -597,6 +898,13 @@ function MediaRow({
 
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gold/15 bg-bg-void/40 p-3">
+      {/* Drag handle */}
+      <GripVertical
+        size={16}
+        className="flex-shrink-0 cursor-grab text-text-muted/60"
+        aria-label="क्रम बदलने के लिए खींचें"
+      />
+
       {/* Thumb */}
       <div className="relative h-16 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-bg-purple">
         {media.url && (
@@ -610,7 +918,7 @@ function MediaRow({
       </div>
 
       {/* Fields */}
-      <div className="grid min-w-[260px] flex-1 gap-2 sm:grid-cols-3">
+      <div className="grid min-w-[260px] flex-1 gap-2 sm:grid-cols-2">
         <label className="block">
           <span className="font-devanagari mb-1 block text-[11px] text-text-muted">
             लुक का नाम
@@ -631,15 +939,6 @@ function MediaRow({
             onChange={(e) => setPrice(e.target.value)}
             inputMode="numeric"
             placeholder="खाली = सिर्फ़ संदर्भ"
-            className="py-1.5 text-xs"
-          />
-        </label>
-        <label className="block">
-          <span className="font-devanagari mb-1 block text-[11px] text-text-muted">क्रम</span>
-          <Input
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            inputMode="numeric"
             className="py-1.5 text-xs"
           />
         </label>

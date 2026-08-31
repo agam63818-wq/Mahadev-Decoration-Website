@@ -2,21 +2,20 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import { getPortfolioItemBySlug, getAllPortfolioItems } from '@/services/portfolio'
+import { getPortfolioItemById } from '@/services/portfolio'
 import { buildBookingUrl } from '@/utils/booking'
 import { GalleryDetailClient } from '@/features/gallery/GalleryDetailClient'
+
+// The live portfolio_items table has no slug column — the route param is the
+// row `id`. force-dynamic so admin edits appear immediately (no stale SSG).
+export const dynamic = 'force-dynamic'
 
 interface Props {
   params: { slug: string }
 }
 
-export async function generateStaticParams() {
-  const items = await getAllPortfolioItems()
-  return items.map((item) => ({ slug: item.slug }))
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const item = await getPortfolioItemBySlug(params.slug)
+  const item = await getPortfolioItemById(params.slug)
   if (!item) return { title: 'Not Found' }
 
   return {
@@ -31,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function GalleryDetailPage({ params }: Props) {
-  const item = await getPortfolioItemBySlug(params.slug)
+  const item = await getPortfolioItemById(params.slug)
   if (!item) notFound()
 
   const bookingUrl = buildBookingUrl({

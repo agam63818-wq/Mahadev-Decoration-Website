@@ -18,10 +18,6 @@ export const businessSettings: BusinessSettings = {
   whatsapp: '',
   email: '',
   address: '',
-  addressHindi: '',
-  city: '',
-  state: '',
-  pincode: '',
   businessHours: [
     { day: 'Monday', dayHindi: 'सोमवार', open: '09:00', close: '20:00', isClosed: false },
     { day: 'Tuesday', dayHindi: 'मंगलवार', open: '09:00', close: '20:00', isClosed: false },
@@ -34,7 +30,6 @@ export const businessSettings: BusinessSettings = {
   // Also empty — links are added by the admin, and social_links is an open
   // key-value map so new platforms need no code change.
   socialLinks: {},
-  mapEmbedUrl: '',
 }
 
 // ─── Hero Stats (vertical rail — exactly 3 as per spec) ───────────────────────

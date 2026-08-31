@@ -18,10 +18,7 @@ export default async function AdminSettingsPage() {
         whatsapp: settings.whatsapp,
         email: settings.email,
         address: settings.address,
-        city: settings.city,
-        state: settings.state,
-        pincode: settings.pincode,
-        mapEmbedUrl: settings.mapEmbedUrl,
+        businessHours: settings.businessHours,
         socialLinks: settings.socialLinks as Record<string, string>,
       }}
       supabaseReady={isSupabaseConfigured()}

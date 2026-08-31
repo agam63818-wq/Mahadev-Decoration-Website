@@ -60,8 +60,11 @@ export interface Occasion {
 // ─── Portfolio / Gallery ──────────────────────────────────────────────────────
 export interface PortfolioItem {
   id: string
+  /** Live table has no slug column — this carries the item id (URL identifier). */
   slug: string
   title: string         // Hindi/English
+  /** portfolio_categories.id — drives the public gallery filter pills. */
+  categoryId?: string | null
   eventType: EventType
   location: string
   priceRange: string    // e.g. "₹15,000 – ₹25,000"
@@ -175,14 +178,13 @@ export interface BusinessSettings {
   phone: string
   whatsapp: string
   email: string
+  /**
+   * Full free-text address — the single address field in business_settings.
+   * Empty until the admin fills it in; every surface hides itself until then.
+   */
   address: string
-  addressHindi: string
-  city: string
-  state: string
-  pincode: string
   businessHours: BusinessHours[]
   socialLinks: SocialLinks
-  mapEmbedUrl: string
 }
 
 export interface BusinessHours {

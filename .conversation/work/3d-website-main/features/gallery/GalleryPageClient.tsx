@@ -7,40 +7,61 @@ import Image from 'next/image'
 import Link from 'next/link'
 import type { PortfolioItem, EventType } from '@/types'
 import { isBookableLook } from '@/types'
+import type { PortfolioCategory } from '@/services/portfolio'
 import { LooksGallery } from '@/features/gallery/LooksGallery'
 import { buildBookingUrl } from '@/utils/booking'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 
-const filterLabels: { value: EventType | 'all'; label: string }[] = [
-  { value: 'all', label: 'सभी' },
-  { value: 'wedding', label: 'वेडिंग' },
-  { value: 'birthday', label: 'बर्थडे' },
-  { value: 'car', label: 'कार' },
-  { value: 'haldi', label: 'हल्दी' },
-  { value: 'mehendi', label: 'मेहंदी' },
-  { value: 'stage', label: 'स्टेज' },
-  { value: 'anniversary', label: 'एनिवर्सरी' },
-  { value: 'mandap', label: 'मंडप' },
-]
-
 interface GalleryPageClientProps {
   items: PortfolioItem[]
+  /**
+   * Live portfolio_categories — the filter pills are built from these, so an
+   * admin adding a category in /admin/portfolio shows up here with no code
+   * change. When empty (categories not set up yet), the pills fall back to the
+   * event types actually present in the items, so the page is never broken.
+   */
+  categories: PortfolioCategory[]
 }
 
-export function GalleryPageClient({ items }: GalleryPageClientProps) {
+export function GalleryPageClient({ items, categories }: GalleryPageClientProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const typeParam = searchParams.get('type') as EventType | null
-  const [activeFilter, setActiveFilter] = useState<EventType | 'all'>(typeParam ?? 'all')
+  // ?type= accepts either a category slug (e.g. "mandap") or an item event
+  // type (e.g. "wedding") — both are matched below, so the Occasions and
+  // Services section links keep working.
+  const typeParam = searchParams.get('type')
+  const [activeFilter, setActiveFilter] = useState<string>(typeParam ?? 'all')
   const [selectedItem, setSelectedItem] = useState<PortfolioItem | null>(null)
 
   useEffect(() => {
     if (typeParam) setActiveFilter(typeParam)
   }, [typeParam])
 
-  const filtered = activeFilter === 'all' ? items : items.filter((i) => i.eventType === activeFilter)
+  // Filter pills come from portfolio_categories first. If none are configured
+  // yet, derive pills from the event types present in the items themselves so
+  // the gallery still works before the admin sets categories up.
+  const pills =
+    categories.length > 0
+      ? categories.map((c) => ({ value: c.slug, label: c.name }))
+      : Array.from(new Set(items.map((i) => i.eventType))).map((t) => ({
+          value: t,
+          label: t,
+        }))
+
+  const filtered =
+    activeFilter === 'all'
+      ? items
+      : items.filter((i) => {
+          // Category match: slug OR id.
+          const cat = categories.find(
+            (c) => c.slug === activeFilter || c.id === activeFilter,
+          )
+          if (cat && i.categoryId === cat.id) return true
+          // Legacy event-type match keeps ?type=wedding links working.
+          return i.eventType === (activeFilter as EventType)
+        })
 
   const handleBook = (item: PortfolioItem) => {
     router.push(buildBookingUrl({ eventType: item.eventType, portfolioItemId: item.id, sourceName: item.title }))
@@ -48,9 +69,9 @@ export function GalleryPageClient({ items }: GalleryPageClientProps) {
 
   return (
     <>
-      {/* Filter pills */}
+      {/* Filter pills — driven by portfolio_categories from the admin panel */}
       <div className="flex flex-wrap gap-2 mb-8" role="group" aria-label="गैलरी फिल्टर">
-        {filterLabels.map((f) => (
+        {[{ value: 'all', label: 'सभी' }, ...pills].map((f) => (
           <button
             key={f.value}
             onClick={() => setActiveFilter(f.value)}

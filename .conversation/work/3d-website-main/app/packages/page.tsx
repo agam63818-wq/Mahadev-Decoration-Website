@@ -13,6 +13,10 @@ export const metadata: Metadata = {
   },
 }
 
+// Admin-editable at /admin/packages — render on every request so admin
+// changes appear on the public page immediately.
+export const dynamic = 'force-dynamic'
+
 export default async function PackagesPage() {
   const packages = await getAllPackages()
 

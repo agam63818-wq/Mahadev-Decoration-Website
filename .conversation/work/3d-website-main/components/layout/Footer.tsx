@@ -88,7 +88,7 @@ export function Footer() {
             {/* Tagline */}
             <p className="text-text-muted text-sm leading-relaxed mb-5 font-devanagari">
               {businessSettings.tagline}
-              {businessSettings.city ? ` — ${businessSettings.city} और आसपास के क्षेत्रों में प्रीमियम डेकोरेशन सर्विस।` : ' — प्रीमियम डेकोरेशन सर्विस।'}
+              {' — प्रीमियम डेकोरेशन सर्विस।'}
             </p>
 
             {/* Premium stats — trust builders */}
@@ -220,12 +220,12 @@ export function Footer() {
                 </a>
               </li>
               )}
-              {businessSettings.addressHindi && (
+              {businessSettings.address && (
               <li className="flex items-start gap-2.5 text-text-muted text-sm group">
                 <div className="w-8 h-8 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:border-gold/40 transition-all">
                   <MapPin size={13} className="text-gold" />
                 </div>
-                <span>{businessSettings.addressHindi}</span>
+                <span>{businessSettings.address}</span>
               </li>
               )}
               {/* WhatsApp quick link — only when a number is configured */}
@@ -256,8 +256,6 @@ export function Footer() {
             सर्वाधिकार सुरक्षित
           </p>
           <p className="text-text-muted/50 text-xs font-devanagari flex items-center gap-1.5">
-            <span>Begusarai, Bihar</span>
-            <span className="text-gold/30">—</span>
             <span>Wedding & Event Decoration</span>
           </p>
         </div>
