@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "installCommand": "cd .conversation/work/3d-website-main && npm install",
+  "installCommand": "cd .conversation/work/3d-website-main && npm install --package-lock=false --registry=https://registry.npmjs.org",
   "buildCommand": "cd .conversation/work/3d-website-main && npm run build"
 }
