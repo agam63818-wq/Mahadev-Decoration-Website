@@ -1,99 +1,104 @@
 'use client'
 
+import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { SectionHeading } from '@/components/ui/SectionHeading'
 import { Button } from '@/components/ui/Button'
+import { Counter, Stagger, StaggerItem, TiltCard } from '@/components/motion'
 import { statsBar } from '@/lib/data'
 import type { Occasion } from '@/types'
 import { formatPrice } from '@/utils/booking'
 import { getIcon } from '@/utils/icons'
-import { useRouter } from 'next/navigation'
 
 interface OccasionCardProps {
   occasion: Occasion
   index: number
 }
 
+const FALLBACK_IMAGE = '/assets/flower-arch-hero.png'
+
 function OccasionCard({ occasion, index }: OccasionCardProps) {
   const router = useRouter()
   const IconComponent = getIcon(occasion.icon)
+  const imageSrc = occasion.imageUrl || FALLBACK_IMAGE
 
   const handleView = () => {
     router.push(`/gallery?type=${occasion.eventType}`)
   }
 
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 28 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-80px' }}
-      transition={{ duration: 0.55, delay: index * 0.08, ease: 'easeOut' }}
-      className="group relative bg-gradient-to-br from-bg-purple to-bg-rich border border-gold/10 rounded-2xl overflow-hidden cursor-pointer"
-      style={{ perspective: '800px' }}
-      whileHover={{
-        y: -5,
-        boxShadow: '0 16px 48px rgba(0,0,0,0.5), 0 0 20px rgba(201,168,76,0.12)',
-        borderColor: 'rgba(201,168,76,0.3)',
-      }}
-    >
-      {/* Image area */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-bg-void to-bg-burgundy">
-        {/* Rich gradient backdrop */}
-        <div
-          className="absolute inset-0 transition-transform duration-500 group-hover:scale-[1.07] will-change-transform"
-          style={{
-            background: [
-              'linear-gradient(135deg, #1A0B2E 0%, #2D0B1C 50%, #0D0815 100%)',
-              'linear-gradient(135deg, #0D0815 0%, #1A0B2E 40%, #3A0F24 100%)',
-              'linear-gradient(135deg, #2D0B1C 0%, #3A0F24 40%, #1A0B2E 100%)',
-              'linear-gradient(135deg, #145A32 0%, #1A0B2E 50%, #0D0815 100%)',
-              'linear-gradient(135deg, #8B1E3F 0%, #3D0F24 50%, #1A0B2E 100%)',
-              'linear-gradient(135deg, #1A0B2E 0%, #0D0815 50%, #3D0F24 100%)',
-            ][index % 6],
-          }}
-        />
-        {/* Decorative icon — subtle glow */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-15 group-hover:opacity-25 transition-opacity duration-300">
-          {IconComponent && <IconComponent size={72} className="text-gold/40" />}
-        </div>
-        {/* Premium icon badge */}
-        <div className="absolute top-3 left-3 w-9 h-9 rounded-full bg-gradient-to-br bg-gold/10 border border-gold/30 flex items-center justify-center backdrop-blur-sm shadow-lg shadow-gold/10">
-          {IconComponent && <IconComponent size={16} className="text-gold" />}
-        </div>
-        {/* Hover overlay — deep</div> */}
-        <div className="absolute inset-0 bg-gradient-to-t from-bg-void/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      </div>
+    <StaggerItem className="group h-full">
+      <TiltCard
+        maxTilt={5}
+        lift={6}
+        className={[
+          'h-full flex flex-col overflow-hidden rounded-2xl cursor-pointer',
+          'bg-gradient-to-br from-bg-purple to-bg-rich',
+          'border border-gold/10 hover:border-gold/40',
+          'shadow-card-lift hover:shadow-gold-glow-sm',
+          'transition-[border-color,box-shadow] duration-300',
+        ].join(' ')}
+        onClick={handleView}
+      >
+        <article className="flex h-full flex-col">
+          {/* Image */}
+          <div className="relative aspect-[4/3] overflow-hidden bg-bg-void">
+            <Image
+              src={imageSrc}
+              alt={occasion.imageAlt || occasion.name}
+              fill
+              sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 16vw"
+              priority={index < 2}
+              className="object-cover transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06] will-change-transform"
+            />
+            {/* Warm grade + bottom fade so title sits comfortably */}
+            <div className="absolute inset-0 bg-gradient-to-t from-bg-void/90 via-bg-void/20 to-transparent" />
+            <div className="absolute inset-0 bg-bg-purple/20 mix-blend-multiply" />
 
-      {/* Content */}
-      <div className="p-4 bg-bg-void/60 backdrop-blur-sm border-t border-gold/10">
-        {/* Title — rich gold on hover */}
-        <h3 className="text-champagne font-bold text-base md:text-lg font-devanagari mb-1 group-hover:text-gold-bright transition-colors duration-300">
-          {occasion.name}
-        </h3>
-        {/* Description */}
-        <p className="text-text-muted text-xs md:text-sm mb-3 leading-relaxed font-devanagari line-clamp-2">
-          {occasion.description}
-        </p>
-        {/* Price — gradient gold */}
-        <p className="text-gold text-sm font-semibold mb-3 font-devanagari">
-          <span className="text-text-muted text-xs font-normal">शुरुआती कीमत — </span>
-          {formatPrice(occasion.startingPrice)}
-        </p>
-        {/* CTA — sleek */}
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={handleView}
-          className="w-full text-xs font-devanagari gap-1.5"
-        >
-          <span>देखें डिजाइन</span>
-          <span className="text-gold-dim">→</span>
-        </Button>
-      </div>
+            {/* Icon badge */}
+            <div className="absolute top-3 left-3 w-9 h-9 rounded-full bg-bg-void/60 border border-gold/30 flex items-center justify-center backdrop-blur-md shadow-lg shadow-black/30 transition-colors duration-300 group-hover:bg-gold/20 group-hover:border-gold/60">
+              {IconComponent && <IconComponent size={16} className="text-gold" />}
+            </div>
 
-      {/* Premium corner accent */}
-      <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-gold/10 to-transparent pointer-events-none" />
-    </motion.article>
+            {/* Price chip */}
+            <div className="absolute top-3 right-3 rounded-full bg-bg-void/70 border border-gold/20 backdrop-blur-md px-2.5 py-1 text-[11px] font-devanagari text-gold-light">
+              {formatPrice(occasion.startingPrice)}+
+            </div>
+
+            {/* Title on image */}
+            <h3 className="absolute bottom-3 left-3 right-3 text-champagne font-bold text-base md:text-lg font-devanagari leading-snug drop-shadow-lg group-hover:text-gold-bright transition-colors duration-300">
+              {occasion.name}
+            </h3>
+
+            {/* Gold sheen sweep on hover */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[-20deg] opacity-0 group-hover:opacity-100 group-hover:translate-x-[300%] transition-[transform,opacity] duration-700 ease-out"
+            />
+          </div>
+
+          {/* Content */}
+          <div className="flex flex-col flex-1 p-4 bg-bg-void/60 backdrop-blur-sm border-t border-gold/10">
+            <p className="text-text-muted text-xs md:text-sm mb-3 leading-relaxed font-devanagari line-clamp-2 flex-1">
+              {occasion.description}
+            </p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleView()
+              }}
+              className="w-full text-xs font-devanagari gap-1.5 group-hover:border-gold/60"
+            >
+              <span>देखें डिजाइन</span>
+              <span className="text-gold-dim transition-transform duration-300 group-hover:translate-x-1">→</span>
+            </Button>
+          </div>
+        </article>
+      </TiltCard>
+    </StaggerItem>
   )
 }
 
@@ -101,11 +106,22 @@ interface OccasionsSectionProps {
   occasions: Occasion[]
 }
 
+const statEmoji: Record<string, string> = {
+  Trophy: '🏅',
+  Users: '👥',
+  MapPin: '📍',
+}
+
 export function OccasionsSection({ occasions }: OccasionsSectionProps) {
   return (
-    <section className="relative py-16 md:py-24 bg-bg-void overflow-hidden" aria-labelledby="occasions-heading">
-      {/* Subtle background glow */}
-      <div className="absolute top-1/2 left-1/3 w-[500px] h-[500px] rounded-full bg-gold/3 blur-3xl pointer-events-none opacity-30" />
+    <section
+      id="occasions"
+      className="relative py-16 md:py-24 bg-bg-void overflow-hidden"
+      aria-labelledby="occasions-heading"
+    >
+      {/* Ambient glows */}
+      <div className="absolute top-1/2 left-1/3 w-[500px] h-[500px] rounded-full bg-gold/5 blur-3xl pointer-events-none opacity-40" />
+      <div className="absolute -bottom-24 right-0 w-[400px] h-[400px] rounded-full bg-floral-red/10 blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <SectionHeading
@@ -116,33 +132,41 @@ export function OccasionsSection({ occasions }: OccasionsSectionProps) {
           align="left"
         />
 
-        {/* 6-card grid — premium cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-12">
+        {/* 6-card grid */}
+        <Stagger
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-12"
+          stagger={0.08}
+        >
           {occasions.map((occasion, i) => (
             <OccasionCard key={occasion.id} occasion={occasion} index={i} />
           ))}
-        </div>
+        </Stagger>
 
-        {/* Stats bar — premium refined */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-t border-gold/10">
+        {/* Stats bar */}
+        <Stagger
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-t border-gold/10"
+          stagger={0.1}
+        >
           {statsBar.map((stat) => (
-            <div key={stat.id} className="flex items-center gap-2 group hover:gap-3 transition-all duration-300">
-              <div className="w-9 h-9 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center flex-shrink-0 group-hover:border-gold/40 group-hover:bg-gold/20 transition-all duration-300">
-                <span className="text-gold text-sm">
-                  {stat.icon === 'Trophy' ? '🏅' :
-                   stat.icon === 'Users' ? '👥' :
-                   stat.icon === 'MapPin' ? '📍' : '★'}
-                </span>
-              </div>
-              <div className="min-w-0">
-                <p className="text-gold font-bold text-sm font-devanagari group-hover:text-gold-bright transition-colors">
-                  {stat.value}
-                </p>
-                <p className="text-text-muted text-xs font-devanagari truncate">{stat.label}</p>
-              </div>
-            </div>
+            <StaggerItem key={stat.id}>
+              <motion.div
+                whileHover={{ x: 4 }}
+                transition={{ duration: 0.25 }}
+                className="flex items-center gap-3 group"
+              >
+                <div className="w-10 h-10 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center flex-shrink-0 group-hover:border-gold/50 group-hover:bg-gold/20 group-hover:shadow-gold-glow-sm transition-all duration-300">
+                  <span className="text-gold text-sm">{statEmoji[stat.icon] ?? '★'}</span>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-gold font-bold text-base md:text-lg font-devanagari group-hover:text-gold-bright transition-colors tabular-nums">
+                    <Counter value={stat.value} />
+                  </p>
+                  <p className="text-text-muted text-xs font-devanagari truncate">{stat.label}</p>
+                </div>
+              </motion.div>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       </div>
     </section>
   )

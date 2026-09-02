@@ -5,6 +5,7 @@ import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
 import { FloatingActions } from '@/components/layout/FloatingActions'
 import { LenisProvider } from '@/components/layout/LenisProvider'
+import { PageTransition } from '@/components/layout/PageTransition'
 import { BusinessInfoReminder } from '@/components/layout/BusinessInfoReminder'
 import { BusinessSettingsProvider } from '@/components/providers/BusinessSettingsProvider'
 import { getBusinessSettings } from '@/services/business'
@@ -70,7 +71,9 @@ export default async function RootLayout({
             <BusinessInfoReminder />
           </Suspense>
           <Navbar />
-          <main id="main-content">{children}</main>
+          <main id="main-content">
+            <PageTransition>{children}</PageTransition>
+          </main>
           <Footer />
           <FloatingActions />
         </BusinessSettingsProvider>

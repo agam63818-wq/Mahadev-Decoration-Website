@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { SectionHeading } from '@/components/ui/SectionHeading'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import { EASE_PREMIUM, Magnetic, Reveal } from '@/components/motion'
 import type { PortfolioItem, EventType } from '@/types'
 import { buildBookingUrl } from '@/utils/booking'
 
@@ -33,17 +34,19 @@ function GalleryCard({ item, index, onClick }: GalleryCardProps) {
   return (
     <motion.article
       layout
-      initial={{ opacity: 0, scale: 0.94 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.94 }}
-      transition={{ duration: 0.45, delay: index * 0.05, ease: 'easeOut' }}
-      className="group relative overflow-hidden rounded-2xl cursor-pointer border border-gold/10 hover:border-gold/30 hover:shadow-xl hover:shadow-gold/5 hover:shadow-black/30 transition-all duration-300"
+      layoutId={`gallery-card-${item.id}`}
+      initial={{ opacity: 0, y: 22, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.92, transition: { duration: 0.25 } }}
+      transition={{ duration: 0.55, delay: index * 0.05, ease: EASE_PREMIUM, layout: { duration: 0.45, ease: EASE_PREMIUM } }}
+      className="group relative overflow-hidden rounded-2xl cursor-pointer border border-gold/10 hover:border-gold/40 shadow-card-lift hover:shadow-gold-glow-sm transition-[border-color,box-shadow] duration-300"
       onClick={onClick}
       role="button"
       tabIndex={0}
       aria-label={`${item.title} देखें`}
       onKeyDown={(e) => e.key === 'Enter' && onClick()}
-      whileHover={{ y: -4, transition: { duration: 0.25 } }}
+      whileHover={{ y: -6, transition: { duration: 0.25 } }}
+      whileTap={{ scale: 0.985 }}
     >
       {/* Image area — stacked gradients for depth */}
       <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-bg-purple to-bg-burgundy rounded-2xl">
@@ -74,7 +77,7 @@ function GalleryCard({ item, index, onClick }: GalleryCardProps) {
             src={primaryImage.url}
             alt={primaryImage.alt}
             fill
-            className="object-cover transition-transform duration-500 group-hover:scale-[1.08]"
+            className="object-cover transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06] will-change-transform"
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
             onError={() => {}}
           />
@@ -293,53 +296,75 @@ export function FeaturedGallerySection({ items }: FeaturedGallerySectionProps) {
           align="left"
         />
 
-        {/* Filter pills — premium gold */}
-        <div className="flex flex-wrap gap-2 justify-left mb-10" role="group" aria-label="गैलरी फिल्टर">
-          {filterLabels.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setActiveFilter(f.value)}
-              aria-pressed={activeFilter === f.value}
-              className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-200 font-devanagari focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold ${
-                activeFilter === f.value
-                  ? 'bg-gradient-to-r from-gold-warm to-gold text-bg-void shadow-lg shadow-gold/20'
-                  : 'border border-gold/20 text-text-muted hover:border-gold/40 hover:text-champagne hover:bg-bg-void/50'
-              }`}
-            >
-              {f.label}
-              {activeFilter === f.value && (
-                <span className="ml-1.5 text-bg-void/50 text-xs">✓</span>
-              )}
-            </button>
-          ))}
-        </div>
+        <LayoutGroup id="featured-gallery">
+          {/* Filter pills — shared-layout gold indicator slides between pills */}
+          <Reveal
+            className="flex flex-wrap gap-2 mb-10"
+            y={12}
+          >
+            <div className="flex flex-wrap gap-2" role="group" aria-label="गैलरी फिल्टर">
+              {filterLabels.map((f) => {
+                const active = activeFilter === f.value
+                return (
+                  <motion.button
+                    key={f.value}
+                    onClick={() => setActiveFilter(f.value)}
+                    aria-pressed={active}
+                    whileTap={{ scale: 0.95 }}
+                    className={`relative px-5 py-2.5 rounded-full text-sm font-medium font-devanagari transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold ${
+                      active
+                        ? 'text-bg-void'
+                        : 'border border-gold/20 text-text-muted hover:border-gold/50 hover:text-champagne hover:bg-bg-void/50'
+                    }`}
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId="featured-filter-pill"
+                        className="absolute inset-0 rounded-full bg-gradient-to-r from-gold-warm to-gold shadow-gold-glow-sm"
+                        transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                      />
+                    )}
+                    <span className="relative z-10 flex items-center gap-1.5">
+                      {f.label}
+                      {active && <span className="text-bg-void/60 text-xs">✓</span>}
+                    </span>
+                  </motion.button>
+                )
+              })}
+            </div>
+          </Reveal>
 
-        {/* Gallery grid — premium masonry-like */}
-        <motion.div layout className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-10">
-          <AnimatePresence mode="popLayout">
-            {filtered.map((item, i) => (
-              <GalleryCard
-                key={item.id}
-                item={item}
-                index={i}
-                onClick={() => setSelectedItem(item)}
-              />
-            ))}
-          </AnimatePresence>
-        </motion.div>
+          {/* Gallery grid — shared-layout reflow on filter change */}
+          <Reveal className="mb-10" y={24} duration={0.7}>
+            <motion.div layout className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <AnimatePresence mode="popLayout" initial={false}>
+                {filtered.map((item, i) => (
+                  <GalleryCard
+                    key={item.id}
+                    item={item}
+                    index={i}
+                    onClick={() => setSelectedItem(item)}
+                  />
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          </Reveal>
+        </LayoutGroup>
 
         {/* View all CTA */}
-        <div className="text-center">
-          <Button
-            variant="secondary"
-            size="lg"
-            onClick={() => router.push('/gallery')}
-            className="font-devanagari gap-2"
-          >
-            <span>सभी काम देखें</span>
-            <span className="text-gold-dim">↓</span>
-          </Button>
-        </div>
+        <Reveal className="text-center">
+          <Magnetic strength={0.2}>
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => router.push('/gallery')}
+              className="font-devanagari gap-2"
+            >
+              <span>सभी काम देखें</span>
+              <span>→</span>
+            </Button>
+          </Magnetic>
+        </Reveal>
       </div>
 
       <GalleryDetailModal

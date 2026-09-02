@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { MapPin, Phone, Clock, Globe, CheckCircle2 } from 'lucide-react'
 import { SectionHeading } from '@/components/ui/SectionHeading'
 import { Button } from '@/components/ui/Button'
+import { Magnetic, Reveal, Stagger, StaggerItem } from '@/components/motion'
 import type { ServiceArea, BusinessSettings } from '@/types'
 
 interface ServiceAreaCardProps {
@@ -12,17 +13,16 @@ interface ServiceAreaCardProps {
   isHomeBase: boolean
 }
 
-function ServiceAreaCard({ area, index, isHomeBase }: ServiceAreaCardProps) {
+function ServiceAreaCard({ area, isHomeBase }: ServiceAreaCardProps) {
   return (
+    <StaggerItem className="h-full">
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-80px' }}
-      transition={{ duration: 0.5, delay: index * 0.07, ease: 'easeOut' }}
-      className={`relative group flex flex-col items-center p-5 md:p-6 rounded-2xl border transition-all duration-300 ${
+      whileHover={{ y: -5 }}
+      transition={{ duration: 0.25 }}
+      className={`relative group h-full flex flex-col items-center p-5 md:p-6 rounded-2xl border transition-[border-color,box-shadow,background-color] duration-300 ${
         isHomeBase
-          ? 'bg-gradient-to-br from-gold/10 via-bg-purple to-bg-rich border-gold/25 shadow-lg shadow-gold/5 hover:shadow-xl hover:shadow-gold/10 hover:scale-[1.02] cursor-default'
-          : 'bg-bg-void/50 border-gold/10 hover:border-gold/20 hover:bg-bg-void/70 hover:shadow-md'
+          ? 'bg-gradient-to-br from-gold/10 via-bg-purple to-bg-rich border-gold/25 shadow-gold-glow-sm hover:shadow-gold-glow cursor-default'
+          : 'bg-bg-void/50 border-gold/10 hover:border-gold/40 hover:bg-bg-purple/40 hover:shadow-gold-glow-sm'
       }`}
     >
       {/* Pin icon — premium gold */}
@@ -51,10 +51,9 @@ function ServiceAreaCard({ area, index, isHomeBase }: ServiceAreaCardProps) {
       )}
 
       {/* Bottom accent */}
-      {isHomeBase && (
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-24 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
-      )}
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 group-hover:w-24 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent transition-all duration-500" />
     </motion.div>
+    </StaggerItem>
   )
 }
 
@@ -142,27 +141,29 @@ export function ServiceAreaSection({ areas, business }: ServiceAreaSectionProps)
         )}
 
         {/* Other areas grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <Stagger className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3" stagger={0.06}>
           {otherAreas.map((area, i) => (
             <ServiceAreaCard key={area.id} area={area} index={i} isHomeBase={false} />
           ))}
-        </div>
+        </Stagger>
 
         {/* CTA */}
-        <div className="text-center mt-10">
-          <Button
-            variant="secondary"
-            size="lg"
-            onClick={() => (window.location.href = '/contact')}
-            className="font-devanagari gap-1.5"
-          >
-            <span>अपने शहर में सेवा लें</span>
-            <span className="text-gold-dim">↓</span>
-          </Button>
+        <Reveal className="text-center mt-10">
+          <Magnetic strength={0.2}>
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => (window.location.href = '/contact')}
+              className="font-devanagari gap-1.5"
+            >
+              <span>अपने शहर में सेवा लें</span>
+              <span>→</span>
+            </Button>
+          </Magnetic>
           <p className="text-text-muted text-xs mt-2 font-devanagari">
             हाँ, हम आपके शहर में भी सेवा देते हैं — पूछें!
           </p>
-        </div>
+        </Reveal>
       </div>
     </section>
   )

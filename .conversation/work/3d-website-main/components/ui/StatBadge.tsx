@@ -1,5 +1,8 @@
+'use client'
+
 import { motion } from 'framer-motion'
 import { cn } from '@/utils/cn'
+import { Counter } from '@/components/motion'
 
 interface StatBadgeProps {
   stat: {
@@ -35,6 +38,7 @@ export function StatBadge({ stat, variant = 'bar', index = 0, className }: StatB
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-50px' }}
       transition={{ duration: 0.5, delay, ease: 'easeOut' }}
+      whileHover={{ y: -3 }}
       className={cn('relative', variantStyles[variant], className)}
     >
       {/* Icon */}
@@ -63,13 +67,15 @@ export function StatBadge({ stat, variant = 'bar', index = 0, className }: StatB
           {variant === 'compact' ? (
             <div className="flex flex-col">
               <span className="text-text-muted text-xs font-devanagari">{stat.label}</span>
-              <span className="text-gold font-bold text-sm font-devanagari">{stat.value}</span>
+              <span className="text-gold font-bold text-sm font-devanagari tabular-nums">
+                <Counter value={stat.value} />
+              </span>
             </div>
           ) : (
             <>
               <p className="text-text-muted text-xs font-devanagari mb-0.5">{stat.label}</p>
-              <p className="text-xl md:text-2xl font-display font-bold text-gold font-devanagari tracking-tight">
-                {stat.value}
+              <p className="text-xl md:text-2xl font-display font-bold text-gold font-devanagari tracking-tight tabular-nums">
+                <Counter value={stat.value} />
               </p>
             </>
           )}

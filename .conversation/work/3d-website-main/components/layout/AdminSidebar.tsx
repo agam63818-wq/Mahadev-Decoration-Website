@@ -52,7 +52,7 @@ export function AdminSidebar({
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-screen bg-bg-void border-r border-gold/20 flex flex-col transition-all duration-300 lg:translate-x-0',
+        'fixed left-0 top-0 z-40 h-screen bg-gradient-to-b from-bg-rich via-bg-void to-bg-void border-r border-gold/20 flex flex-col transition-all duration-300 lg:translate-x-0 shadow-[4px_0_24px_rgba(0,0,0,0.35)]',
         collapsed ? 'w-16' : 'w-64'
       )}
       aria-label="एडमिन साइडबार"
@@ -84,8 +84,8 @@ export function AdminSidebar({
               className={cn(
                 'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 group',
                 isActive
-                  ? 'bg-gold/10 text-gold shadow-sm'
-                  : 'text-text-muted hover:bg-white/5 hover:text-gold'
+                  ? 'bg-gold/10 text-gold border border-gold/20 shadow-gold-glow-sm'
+                  : 'text-text-muted border border-transparent hover:bg-gold/5 hover:text-gold hover:border-gold/15'
               )}
             >
               <item.icon
@@ -116,7 +116,7 @@ export function AdminSidebar({
           href="/admin/settings"
           className={cn(
             'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
-            'text-text-muted hover:bg-white/5 hover:text-gold'
+            'text-text-muted hover:bg-gold/5 hover:text-gold'
           )}
           title="सेटिंग्स"
         >
@@ -128,7 +128,7 @@ export function AdminSidebar({
             onClick={onLogout}
             disabled={loggingOut}
             title="लॉग आउट"
-            className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-text-muted hover:bg-white/5 hover:text-gold transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-text-muted hover:bg-gold/5 hover:text-gold transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loggingOut ? (
               <Loader2 size={20} className="flex-shrink-0 animate-spin" />
@@ -140,7 +140,7 @@ export function AdminSidebar({
         )}
         <button
           onClick={onToggle}
-          className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-text-muted hover:bg-white/5 hover:text-gold transition-all duration-200"
+          className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-text-muted hover:bg-gold/5 hover:text-gold transition-all duration-200"
         >
           <ChevronDown
             size={20}
