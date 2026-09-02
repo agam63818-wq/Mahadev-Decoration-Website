@@ -254,6 +254,24 @@ export type PackageItemRow = {
   sort_order: number
 }
 
+/** public.occasions — home page "अपने अवसर को चुनें" cards (migration 0004). */
+export type OccasionRow = {
+  id: string
+  slug: string
+  name: string
+  name_en: string
+  description: string
+  event_type: string
+  starting_price: number
+  image_url: string
+  image_alt: string
+  icon: string
+  sort_order: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 // ─── Database ─────────────────────────────────────────────────────────────────
 
 export type Database = {
@@ -271,6 +289,7 @@ export type Database = {
       reviews: TableOf<ReviewRow>
       packages: TableOf<PackageRow>
       package_items: TableOf<PackageItemRow>
+      occasions: TableOf<OccasionRow>
     }
     Views: Record<string, never>
     Functions: {

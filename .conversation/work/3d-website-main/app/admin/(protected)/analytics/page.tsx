@@ -16,31 +16,58 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 
-// Simple SVG-based chart component to avoid heavy deps
+// Brand palette (mirrors tailwind.config.ts) — charts are inline-styled so they
+// need literal colours, not utility class names.
+const BRAND = {
+  gold: '#C9A84C',
+  goldLight: '#F0C868',
+  champagne: '#F5E8D0',
+  floralRed: '#8B1E3F',
+  rose: '#C25B7C',
+  emerald: '#34D399',
+  emeraldDeep: '#059669',
+} as const
+
+// Simple CSS-bar chart to avoid heavy deps.
 function BarChart({
   data,
-  color = 'from-gold to-gold-light',
+  from = BRAND.gold,
+  to = BRAND.goldLight,
   height = 200,
   showValue = true,
+  format = (v: number) => String(v),
 }: {
   data: { label: string; value: number }[]
-  color?: string
+  from?: string
+  to?: string
   height?: number
   showValue?: boolean
+  format?: (v: number) => string
 }) {
   const max = Math.max(...data.map((d) => d.value))
   return (
-    <div className="w-full" style={{ height }}>
-      <div className="flex items-end gap-2 h-full">
+    <div className="w-full overflow-x-auto scrollbar-none">
+      <div className="flex items-end gap-1.5 sm:gap-2 min-w-[420px]" style={{ height }}>
         {data.map((d, i) => {
           const h = max > 0 ? (d.value / max) * 100 : 0
           return (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
-              <div className="w-full flex flex-col items-center">
-                <div className="w-full rounded-t-md bg-gradient-to-t" style={{ background: `linear-gradient(135deg, ${color})`, height: `${h}%`, minHeight: h > 0 ? '4px' : '0' }} />
-                {showValue && <span className="text-xs text-text-muted font-devanagari mt-2">{d.value}</span>}
-              </div>
-              <span className="text-xs text-text-muted font-devanagari text-center" style={{ transform: 'rotate(-30deg)', transformOrigin: 'left bottom' }}>{d.label}</span>
+            <div key={i} className="flex-1 min-w-0 flex flex-col items-center h-full justify-end">
+              {showValue && (
+                <span className="text-[10px] sm:text-xs text-champagne/80 font-devanagari mb-1 tabular-nums">
+                  {format(d.value)}
+                </span>
+              )}
+              <div
+                className="w-full rounded-t-md shadow-[0_0_14px_rgba(201,168,76,0.25)] transition-[height] duration-700 ease-out"
+                style={{
+                  background: `linear-gradient(180deg, ${to} 0%, ${from} 100%)`,
+                  height: `${h}%`,
+                  minHeight: h > 0 ? '4px' : '0',
+                }}
+              />
+              <span className="mt-2 text-[10px] sm:text-xs text-text-muted font-devanagari text-center truncate w-full">
+                {d.label}
+              </span>
             </div>
           )
         })}
@@ -49,50 +76,43 @@ function BarChart({
   )
 }
 
-// Pie chart using stroke-dasharray
+// Donut chart using stroke-dasharray / dashoffset (legend lives beside it).
 function PieChartSimple({
   segments,
 }: {
   segments: { label: string; value: number; color: string }[]
 }) {
   const total = segments.reduce((s, seg) => s + seg.value, 0)
-  let offset = 0
+  const R = 40
+  const C = 2 * Math.PI * R
+  let consumed = 0
   return (
-    <div className="relative w-32 h-32">
+    <div className="relative w-32 h-32 sm:w-36 sm:h-36 flex-shrink-0">
       <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+        <circle cx="50" cy="50" r={R} fill="none" stroke="rgba(201,168,76,0.12)" strokeWidth="14" />
         {segments.map((seg, i) => {
-          const pct = seg.value / total
-          const dash = pct * 2 * Math.PI * 50
-          const gap = 200 - dash
-          const dashArray = offset === 0 ? `${dash} ${gap}` : `${offset} ${dash} ${gap}`
-          offset += dash + 2
-          return (
+          const len = total > 0 ? (seg.value / total) * C : 0
+          const el = (
             <circle
               key={i}
               cx="50"
               cy="50"
-              r="48"
+              r={R}
               fill="none"
               stroke={seg.color}
-              strokeWidth="18"
-              strokeDasharray={dashArray}
-              strokeLinecap="round"
+              strokeWidth="14"
+              strokeDasharray={`${Math.max(len - 1.5, 0)} ${C}`}
+              strokeDashoffset={-consumed}
               className="transition-all duration-500"
             />
           )
+          consumed += len
+          return el
         })}
       </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-2xl font-display font-bold text-gold">{total}</span>
-      </div>
-      {/* Legend */}
-      <div className="absolute bottom-0 left-0 right-0 flex flex-wrap justify-center gap-3 mt-2">
-        {segments.map((seg, i) => (
-          <div key={i} className="flex items-center gap-1.5 text-xs text-text-muted font-devanagari">
-            <span className="w-2.5 h-2.5 rounded-full" style={{ background: seg.color }} />
-            <span>{seg.label}</span>
-          </div>
-        ))}
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl font-display font-bold text-gold leading-none">{total}%</span>
+        <span className="text-[10px] text-text-muted font-devanagari mt-1">कुल</span>
       </div>
     </div>
   )
@@ -119,12 +139,12 @@ const monthlyRevenue = [
   { label: 'नवंबर', value: 265000 },
 ]
 const categoryBreakdown = [
-  { label: 'वेडिंग', value: 45, color: '#D4AF37' },
-  { label: 'बर्थडे', value: 20, color: '#8B5CF6' },
-  { label: 'हल्दी', value: 12, color: '#F59E0B' },
-  { label: 'मेहंदी', value: 8, color: '#EC4899' },
-  { label: 'कार', value: 10, color: '#3B82F6' },
-  { label: 'स्टेज', value: 5, color: '#10B981' },
+  { label: 'वेडिंग', value: 45, color: BRAND.gold },
+  { label: 'बर्थडे', value: 20, color: BRAND.rose },
+  { label: 'हल्दी', value: 12, color: BRAND.goldLight },
+  { label: 'मेहंदी', value: 8, color: BRAND.floralRed },
+  { label: 'कार', value: 10, color: BRAND.champagne },
+  { label: 'स्टेज', value: 5, color: BRAND.emerald },
 ]
 
 export default function AdminAnalyticsPage() {
@@ -138,8 +158,8 @@ export default function AdminAnalyticsPage() {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
       <div className="flex flex-col gap-4 mb-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-display font-bold text-gold font-devanagari">एनालिटिक्स डैशबोर्ड</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl sm:text-2xl font-display font-bold text-gold font-devanagari">एनालिटिक्स डैशबोर्ड</h1>
           <div className="flex gap-2">
             <button
               onClick={() => setPeriod('monthly')}
@@ -166,14 +186,14 @@ export default function AdminAnalyticsPage() {
       </div>
 
       {/* Top stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-8">
         {[
           { label: 'कुल बुकिंग्स', value: totalBookings, trend: '+15%', positive: true, icon: Calendar, color: 'from-gold to-gold-light' },
-          { label: 'कुल राजस्व', value: `₹${totalRevenue.toLocaleString()}`, trend: '+12%', positive: true, icon: DollarSign, color: 'from-emerald-400 to-green-600' },
-          { label: 'औसत बुकिंग/माह', value: `${avgBooking}`, trend: '+8%', positive: true, icon: Activity, color: 'from-blue-400 to-blue-600' },
-          { label: 'माहवार वृद्धि', value: `${Math.round(monthlyGrowth)}%`, trend: '+5%', positive: true, icon: TrendingUp, color: 'from-amber-400 to-amber-600' },
+          { label: 'कुल राजस्व', value: `₹${totalRevenue.toLocaleString()}`, trend: '+12%', positive: true, icon: DollarSign, color: 'from-emerald-400 to-emerald-600' },
+          { label: 'औसत बुकिंग/माह', value: `${avgBooking}`, trend: '+8%', positive: true, icon: Activity, color: 'from-champagne to-gold' },
+          { label: 'माहवार वृद्धि', value: `${Math.round(monthlyGrowth)}%`, trend: monthlyGrowth >= 0 ? '+5%' : '-5%', positive: monthlyGrowth >= 0, icon: monthlyGrowth >= 0 ? TrendingUp : TrendingDown, color: 'from-rose to-floral-red' },
         ].map((s) => (
-          <div key={s.label} className="bg-bg-void/80 border border-gold/10 rounded-2xl p-4">
+          <div key={s.label} className="bg-bg-void/80 border border-gold/10 rounded-2xl p-4 min-w-0">
             <div className="flex items-center justify-between mb-3">
               <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center`}>
                 <s.icon size={18} className="text-bg-void" />
@@ -184,7 +204,7 @@ export default function AdminAnalyticsPage() {
               </div>
             </div>
             <p className="text-text-muted text-xs font-devanagari mb-1">{s.label}</p>
-            <p className="text-2xl font-display font-bold text-gold">{s.value}</p>
+            <p className="text-lg sm:text-2xl font-display font-bold text-gold break-words">{s.value}</p>
           </div>
         ))}
       </div>
@@ -199,8 +219,8 @@ export default function AdminAnalyticsPage() {
               <Calendar size={12} /> बुकिंग
             </Badge>
           </div>
-          <BarChart data={monthlyBookings} color="from-gold to-gold-light" height={200} />
-          <div className="flex justify-between mt-4 text-xs text-text-muted">
+          <BarChart data={monthlyBookings} from={BRAND.gold} to={BRAND.goldLight} height={200} />
+          <div className="flex flex-wrap justify-between gap-2 mt-4 text-xs text-text-muted">
             <span>{Math.min(...monthlyBookings.map((m) => m.value))} (न्यूनतम)</span>
             <span>{Math.max(...monthlyBookings.map((m) => m.value))} (अधिकतम)</span>
             <span>{avgBooking} (औसत)</span>
@@ -215,8 +235,14 @@ export default function AdminAnalyticsPage() {
               <DollarSign size={12} /> राजस्व
             </Badge>
           </div>
-          <BarChart data={monthlyRevenue} color="from-emerald-400 to-green-600" height={200} />
-          <div className="flex justify-between mt-4 text-xs text-text-muted">
+          <BarChart
+            data={monthlyRevenue}
+            from={BRAND.emeraldDeep}
+            to={BRAND.emerald}
+            height={200}
+            format={(v) => `₹${Math.round(v / 1000)}k`}
+          />
+          <div className="flex flex-wrap justify-between gap-2 mt-4 text-xs text-text-muted">
             <span>₹{Math.min(...monthlyRevenue.map((m) => m.value)).toLocaleString()}</span>
             <span>₹{Math.max(...monthlyRevenue.map((m) => m.value)).toLocaleString()}</span>
             <span>₹{Math.round(totalRevenue / monthlyRevenue.length).toLocaleString()} (औसत)</span>
@@ -231,9 +257,9 @@ export default function AdminAnalyticsPage() {
               <PieChart size={12} /> केटेगरी
             </Badge>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-col sm:flex-row items-center gap-6">
             <PieChartSimple segments={categoryBreakdown} />
-            <div className="flex-1 space-y-3">
+            <div className="flex-1 w-full space-y-3 min-w-0">
               {categoryBreakdown.map((seg) => (
                 <div key={seg.label} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -241,7 +267,7 @@ export default function AdminAnalyticsPage() {
                     <span className="text-sm text-text-muted font-devanagari">{seg.label}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-24 h-2 bg-bg-void/50 rounded-full overflow-hidden">
+                    <div className="w-16 sm:w-24 h-2 bg-bg-void/50 rounded-full overflow-hidden">
                       <div className="h-full rounded-full" style={{ width: `${seg.value}%`, background: seg.color }} />
                     </div>
                     <span className="text-sm font-devanagari font-medium text-gold w-10 text-right">{seg.value}%</span>
@@ -260,7 +286,7 @@ export default function AdminAnalyticsPage() {
               <BarChart3 size={12} /> मेट्रिक्स
             </Badge>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {[
               { label: 'Inquiry → Booking रेट', value: '78%', trend: '+12%', positive: true, icon: Users },
               { label: 'Repeat ग्राहक रेट', value: '22%', trend: '+8%', positive: true, icon: TrendingUp },
@@ -278,7 +304,7 @@ export default function AdminAnalyticsPage() {
                   </div>
                 </div>
                 <p className="text-text-muted text-xs font-devanagari mb-1">{m.label}</p>
-                <p className="text-xl font-display font-bold text-gold">{m.value}</p>
+                <p className="text-lg sm:text-xl font-display font-bold text-gold">{m.value}</p>
               </div>
             ))}
           </div>
@@ -289,7 +315,7 @@ export default function AdminAnalyticsPage() {
       <div className="flex items-start gap-3 p-4 rounded-xl bg-bg-void/50 border border-gold/10">
         <Activity size={16} className="text-gold mt-0.5 flex-shrink-0" />
         <p className="text-sm text-text-muted font-devanagari">
-          ये एनालिटिक्स वास्तविक Supabase डेटा पर आधारित हैं। आंकड़े live डैशबोर्ड से आते हैं और हर एडमिन एक्शन के साथ अपडेट होते रहते हैं।
+          यह डैशबोर्ड अभी नमूना (sample) आंकड़े दिखा रहा है — जैसे-जैसे बुकिंग और पेमेंट Supabase में दर्ज होंगे, यही चार्ट live डेटा से भरेंगे।
         </p>
       </div>
     </motion.div>

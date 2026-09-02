@@ -52,8 +52,8 @@ export default function AdminCustomersPage() {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
       <div className="flex flex-col gap-4 mb-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-display font-bold text-gold font-devanagari">ग्राहक प्रबंधन</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl sm:text-2xl font-display font-bold text-gold font-devanagari">ग्राहक प्रबंधन</h1>
           <div className="flex gap-2">
             <Button variant="ghost" size="md">
               <Search size={14} /> खोजें
@@ -76,21 +76,21 @@ export default function AdminCustomersPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-8">
         {[
           { label: 'कुल ग्राहक', value: sampleCustomers.length, icon: Users, color: 'from-gold to-gold-light' },
-          { label: 'कुल खर्च (Total Spent)', value: `₹${sampleCustomers.reduce((s, c) => s + c.totalSpent, 0).toLocaleString()}`, icon: DollarSign, color: 'from-emerald-400 to-green-600' },
-          { label: 'कुल बुकिंग्स पूरी', value: sampleCustomers.reduce((s, c) => s + c.bookingsCompleted, 0), icon: Calendar, color: 'from-blue-400 to-blue-600' },
-          { label: 'नया ग्राहक (इस माह)', value: '12', icon: Mail, color: 'from-amber-400 to-amber-600' },
+          { label: 'कुल खर्च (Total Spent)', value: `₹${sampleCustomers.reduce((s, c) => s + c.totalSpent, 0).toLocaleString()}`, icon: DollarSign, color: 'from-emerald-400 to-emerald-600' },
+          { label: 'कुल बुकिंग्स पूरी', value: sampleCustomers.reduce((s, c) => s + c.bookingsCompleted, 0), icon: Calendar, color: 'from-champagne to-gold' },
+          { label: 'नया ग्राहक (इस माह)', value: '12', icon: Mail, color: 'from-rose to-floral-red' },
         ].map((s) => (
           <Card key={s.label} variant="outline">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center`}>
+              <div className={`w-10 h-10 flex-shrink-0 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center`}>
                 <s.icon size={20} className="text-bg-void" />
               </div>
-              <div>
-                <p className="text-text-muted text-xs font-devanagari">{s.label}</p>
-                <p className="text-xl font-display font-bold text-gold">{s.value}</p>
+              <div className="min-w-0">
+                <p className="text-text-muted text-xs font-devanagari truncate">{s.label}</p>
+                <p className="text-lg sm:text-xl font-display font-bold text-gold break-words">{s.value}</p>
               </div>
             </div>
           </Card>
@@ -99,7 +99,8 @@ export default function AdminCustomersPage() {
 
       {/* Table */}
       <Card variant="outline" className="overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr className="border-b border-gold/10 bg-bg-void/30">
               {['आईडी', 'ग्राहक का नाम', 'फ़ोन', 'ईमेल', 'कुल खर्च', 'पूरी बुकिंग्स', 'अंतिम बुकिंग', 'कार्य'].map((h) => (
@@ -134,6 +135,7 @@ export default function AdminCustomersPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </Card>
     </motion.div>
   )

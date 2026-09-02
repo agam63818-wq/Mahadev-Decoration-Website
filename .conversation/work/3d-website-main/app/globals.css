@@ -210,6 +210,26 @@ body {
   text-shadow: 0 2px 12px rgba(201,168,76,0.3);
 }
 
+/* Hero footage: gently lifted so the decor reads on small OLED screens. */
+.hero-media {
+  filter: brightness(1.12) contrast(1.04) saturate(1.1);
+}
+
+/* Soft local scrim behind the hero copy — legibility without a dark frame. */
+.hero-copy-scrim {
+  position: relative;
+}
+.hero-copy-scrim::before {
+  content: '';
+  position: absolute;
+  inset: -2rem -2.5rem -2rem -3rem;
+  pointer-events: none;
+  z-index: -1;
+  border-radius: 2rem;
+  background: radial-gradient(ellipse at 30% 50%, rgba(7, 4, 12, 0.62) 0%, rgba(7, 4, 12, 0.35) 45%, transparent 75%);
+  filter: blur(18px);
+}
+
 /* ─── Gradient border trick ──────────────────────────────────────────────────── */
 .gradient-border {
   position: relative;
@@ -226,4 +246,13 @@ body {
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
+}
+
+/* Hide scrollbars on horizontally scrolling chip rows (still scrollable). */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }

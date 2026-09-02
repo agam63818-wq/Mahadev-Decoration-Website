@@ -43,7 +43,7 @@ const dashboardCards: DashboardCard[] = [
     value: '38',
     subtitle: 'अगले 7 दिन में',
     icon: Clock,
-    color: 'from-amber-400 to-amber-600',
+    color: 'from-gold-bright to-gold-warm',
     href: '/admin/calendar',
     trend: { value: '+4', positive: true },
   },
@@ -53,7 +53,7 @@ const dashboardCards: DashboardCard[] = [
     value: '7',
     subtitle: 'अभी का जवाब दें',
     icon: FileText,
-    color: 'from-purple-400 to-purple-600',
+    color: 'from-rose to-floral-red',
     href: '/admin/bookings',
   },
   {
@@ -62,7 +62,7 @@ const dashboardCards: DashboardCard[] = [
     value: '45',
     subtitle: 'कुल पुष्टि की गयी',
     icon: CheckCircle2,
-    color: 'from-green-400 to-emerald-600',
+    color: 'from-emerald-400 to-emerald-600',
     href: '/admin/bookings',
   },
   {
@@ -81,7 +81,7 @@ const dashboardCards: DashboardCard[] = [
     value: '₹2,16,000',
     subtitle: 'कुल जो एडवांस मिला',
     icon: CreditCard,
-    color: 'from-blue-400 to-blue-600',
+    color: 'from-champagne to-gold',
     href: '/admin/payments',
   },
   {
@@ -90,7 +90,7 @@ const dashboardCards: DashboardCard[] = [
     value: '₹3,200',
     subtitle: 'अभी लेते हैं',
     icon: Receipt,
-    color: 'from-rose-400 to-rose-600',
+    color: 'from-floral-red to-bg-burgundy',
     href: '/admin/payments',
   },
   {
@@ -113,7 +113,7 @@ export default function AdminDashboardPage() {
       transition={{ duration: 0.5 }}
     >
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-8">
         {dashboardCards.map((card, i) => (
           <Link key={card.id} href={card.href}>
             <motion.div
@@ -136,7 +136,7 @@ export default function AdminDashboardPage() {
                   {/* Content */}
                   <div className="space-y-1">
                     <p className="text-text-muted text-xs font-devanagari">{card.title}</p>
-                    <p className="text-2xl font-display font-bold text-gold font-devanagari">
+                    <p className="text-xl sm:text-2xl font-display font-bold text-gold font-devanagari break-words">
                       {card.value}
                     </p>
                     <p className="text-xs text-text-muted font-devanagari">{card.subtitle}</p>
@@ -150,7 +150,7 @@ export default function AdminDashboardPage() {
                       }`}
                     >
                       <TrendingUp size={12} />
-                      <span>{card.trend.value} vs &apos; last month</span>
+                      <span className="font-devanagari">{card.trend.value} पिछले माह से</span>
                     </div>
                   )}
 
@@ -207,8 +207,8 @@ export default function AdminDashboardPage() {
             सभी देखें <ArrowRight size={14} />
           </Link>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-xl border border-gold/10">
+          <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="border-b border-gold/10">
                 <th className="text-left py-3 px-4 text-text-muted font-devanagari text-xs font-medium">
@@ -247,7 +247,7 @@ export default function AdminDashboardPage() {
                       className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
                         row.status === 'कॉन्फर्म'
                           ? 'bg-emerald-400/10 text-emerald-400'
-                          : 'bg-amber-400/10 text-amber-400'
+                          : 'bg-gold/10 text-gold-light'
                       }`}
                     >
                       {row.status}
