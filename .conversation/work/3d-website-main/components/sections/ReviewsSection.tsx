@@ -5,17 +5,26 @@ import { Star } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { SectionHeading } from '@/components/ui/SectionHeading'
 import { Button } from '@/components/ui/Button'
+import { Magnetic, Reveal, Stagger, StaggerItem, TiltCard } from '@/components/motion'
 import type { Review } from '@/types'
 
 function StarRating({ rating }: { rating: number }) {
   return (
     <div className="flex gap-0.5" aria-label={`${rating} में से 5 स्टार`}>
       {[1, 2, 3, 4, 5].map((star) => (
-        <Star
+        <motion.span
           key={star}
-          size={14}
-          className={star <= rating ? 'text-gold fill-gold' : 'text-text-muted/30'}
-        />
+          initial={{ opacity: 0, scale: 0.4 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.35, delay: 0.3 + star * 0.07, type: 'spring', stiffness: 300, damping: 15 }}
+          className="inline-flex"
+        >
+          <Star
+            size={14}
+            className={star <= rating ? 'text-gold fill-gold drop-shadow-[0_0_4px_rgba(201,168,76,0.5)]' : 'text-text-muted/30'}
+          />
+        </motion.span>
       ))}
     </div>
   )
@@ -26,7 +35,7 @@ interface ReviewCardProps {
   index: number
 }
 
-function ReviewCard({ review, index }: ReviewCardProps) {
+function ReviewCard({ review }: ReviewCardProps) {
   const eventTypeLabels: Record<string, string> = {
     wedding: 'वेडिंग',
     birthday: 'बर्थडे',
@@ -43,15 +52,22 @@ function ReviewCard({ review, index }: ReviewCardProps) {
   }
 
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-80px' }}
-      transition={{ duration: 0.55, delay: index * 0.1, ease: 'easeOut' }}
-      className="relative group bg-gradient-to-br from-bg-purple to-bg-rich border border-gold/10 rounded-2xl p-6 hover:border-gold/20 hover:shadow-xl hover:shadow-gold/5 transition-all duration-300"
+    <StaggerItem className="group h-full">
+    <TiltCard
+      maxTilt={3}
+      lift={5}
+      className="h-full bg-gradient-to-br from-bg-purple to-bg-rich border border-gold/10 rounded-2xl p-6 hover:border-gold/35 shadow-card-lift hover:shadow-gold-glow-sm transition-[border-color,box-shadow] duration-300"
     >
+    <article className="relative h-full flex flex-col">
       {/* Top gold accent */}
-      <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
+      <div className="absolute -top-6 -left-6 -right-6 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
+      {/* Quote mark */}
+      <span
+        aria-hidden="true"
+        className="absolute -top-2 right-0 text-6xl font-display leading-none text-gold/10 group-hover:text-gold/20 transition-colors duration-500 select-none"
+      >
+        ”
+      </span>
 
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
@@ -84,13 +100,12 @@ function ReviewCard({ review, index }: ReviewCardProps) {
       </p>
 
       {/* Date — subtle */}
-      <p className="text-text-muted text-xs mt-3 font-devanagari">
+      <p className="text-text-muted text-xs mt-auto pt-3 font-devanagari">
         {new Date(review.date).toLocaleDateString('hi-IN', { year: 'numeric', month: 'long' })}
       </p>
-
-      {/* Bottom accent */}
-      <div className="absolute bottom-0 left-3 right-3 h-px bg-gradient-to-r from-transparent via-gold/15 to-transparent" />
-    </motion.article>
+    </article>
+    </TiltCard>
+    </StaggerItem>
   )
 }
 
@@ -117,23 +132,25 @@ export function ReviewsSection({ reviews }: ReviewsSectionProps) {
         />
 
         {/* Reviews grid — premium cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+        <Stagger className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-10" stagger={0.1}>
           {reviews.map((review, i) => (
             <ReviewCard key={review.id} review={review} index={i} />
           ))}
-        </div>
+        </Stagger>
 
         {/* CTAs */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Button
-            variant="secondary"
-            size="lg"
-            onClick={() => router.push('/reviews')}
-            className="font-devanagari gap-1.5"
-          >
-            <span>सभी समीक्षाएं देखें</span>
-            <span className="text-gold-dim">↓</span>
-          </Button>
+        <Reveal className="flex flex-col sm:flex-row gap-3 justify-center" delay={0.1}>
+          <Magnetic strength={0.2}>
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => router.push('/reviews')}
+              className="font-devanagari gap-1.5 w-full sm:w-auto"
+            >
+              <span>सभी समीक्षाएं देखें</span>
+              <span>→</span>
+            </Button>
+          </Magnetic>
           <Button
             variant="outline"
             size="lg"
@@ -142,7 +159,7 @@ export function ReviewsSection({ reviews }: ReviewsSectionProps) {
           >
             अपना अनुभव साझा करें <span className="text-gold-dim">↑</span>
           </Button>
-        </div>
+        </Reveal>
       </div>
     </section>
   )

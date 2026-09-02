@@ -37,7 +37,7 @@ interface CalendarEvent {
 const statusColors: Record<CalendarEvent['status'], string> = {
   pending: 'bg-amber-400/15 text-amber-400 border-amber-400/30',
   confirmed: 'bg-emerald-400/15 text-emerald-400 border-emerald-400/30',
-  'in-progress': 'bg-blue-400/15 text-blue-400 border-blue-400/30',
+  'in-progress': 'bg-gold-light/15 text-gold-light border-gold-light/30',
   completed: 'bg-green-400/15 text-green-400 border-green-400/30',
   cancelled: 'bg-rose-400/15 text-rose-400 border-rose-400/30',
 }
@@ -157,7 +157,7 @@ export default function AdminCalendarPage() {
       <div className="flex flex-wrap gap-2 mb-4">
         {(['pending', 'confirmed', 'in-progress', 'completed', 'cancelled'] as const).map((s) => (
           <div key={s} className="flex items-center gap-1.5 text-xs text-text-muted font-devanagari">
-            <span className={`w-2.5 h-2.5 rounded-full border ${statusColors[s].split(' ')[0]}`} style={{ background: statusColors[s].includes('bg-amber-400') ? '#f59e0b' : statusColors[s].includes('bg-emerald-400') ? '#10b981' : statusColors[s].includes('bg-blue-400') ? '#3b82f6' : statusColors[s].includes('bg-green-400') ? '#22c55e' : '#f43f5e' }} />
+            <span className={`w-2.5 h-2.5 rounded-full border ${statusColors[s].split(' ')[0]}`} style={{ background: statusColors[s].includes('bg-amber-400') ? '#f59e0b' : statusColors[s].includes('bg-emerald-400') ? '#10b981' : statusColors[s].includes('bg-gold-light') ? '#F0C868' : statusColors[s].includes('bg-green-400') ? '#22c55e' : '#f43f5e' }} />
             <span>{s}</span>
           </div>
         ))}

@@ -7,6 +7,7 @@ import { Check, Clock, Maximize2, Star, Sparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { SectionHeading } from '@/components/ui/SectionHeading'
 import { Button } from '@/components/ui/Button'
+import { Counter, Magnetic, Reveal, Stagger, StaggerItem, TiltCard } from '@/components/motion'
 import type { Package } from '@/types'
 import { buildBookingUrl, formatPrice } from '@/utils/booking'
 
@@ -15,7 +16,7 @@ interface PackageCardProps {
   index: number
 }
 
-function PackageCard({ pkg, index }: PackageCardProps) {
+function PackageCard({ pkg }: PackageCardProps) {
   const router = useRouter()
 
   const handleCustomize = () => {
@@ -32,19 +33,19 @@ function PackageCard({ pkg, index }: PackageCardProps) {
   }
 
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 28 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-100px' }}
-      transition={{ duration: 0.55, delay: index * 0.12, ease: 'easeOut' }}
-      className={`relative flex flex-col bg-gradient-to-br from-bg-purple to-bg-rich border rounded-2xl overflow-hidden transition-all duration-300 ${
+    <StaggerItem className={`group h-full ${pkg.popular ? 'lg:-mt-3' : ''}`}>
+    <TiltCard
+      maxTilt={3}
+      lift={7}
+      className={`h-full bg-gradient-to-br from-bg-purple to-bg-rich border rounded-2xl overflow-hidden transition-[border-color,box-shadow] duration-300 ${
         pkg.popular
-          ? 'border-gold shadow-xl shadow-gold/15 hover:shadow-2xl hover:shadow-gold/20'
-          : 'border-gold/15 hover:border-gold/30 hover:shadow-xl hover:shadow-gold/5'
+          ? 'border-gold shadow-gold-glow hover:shadow-gold-glow-lg'
+          : 'border-gold/15 hover:border-gold/40 shadow-card-lift hover:shadow-gold-glow-sm'
       }`}
     >
+    <article className="relative flex flex-col h-full">
       {/* Top gold accent line */}
-      <div className="h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
+      <div className={`h-px bg-gradient-to-r from-transparent to-transparent ${pkg.popular ? 'via-gold animate-shine' : 'via-gold/50'}`} />
 
       {/* Popular badge */}
       {pkg.popular && (
@@ -78,7 +79,7 @@ function PackageCard({ pkg, index }: PackageCardProps) {
           </div>
           <div className="bg-gradient-to-r from-gold-warm via-gold to-gold-bright bg-clip-text text-transparent">
             <span className="text-3xl font-bold font-devanagari tabular-nums">
-              {formatPrice(pkg.startingPrice)}
+              <Counter value={formatPrice(pkg.startingPrice)} duration={1.2} />
             </span>
           </div>
           {pkg.priceRange && (
@@ -104,13 +105,20 @@ function PackageCard({ pkg, index }: PackageCardProps) {
 
         {/* Inclusions — premium checklist */}
         <ul className="space-y-2.5 mb-6 flex-1">
-          {pkg.inclusions.slice(0, 6).map((item) => (
-            <li key={item} className="flex items-start gap-2.5 text-sm text-text-muted">
+          {pkg.inclusions.slice(0, 6).map((item, i) => (
+            <motion.li
+              key={item}
+              initial={{ opacity: 0, x: -10 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: 0.25 + i * 0.06 }}
+              className="flex items-start gap-2.5 text-sm text-text-muted"
+            >
               <div className="w-5 h-5 rounded-full bg-gradient-to-r from-gold-warm/20 to-gold/10 border border-gold/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <Check size={10} className="text-gold" strokeWidth={3} />
               </div>
               <span className="font-devanagari leading-relaxed">{item}</span>
-            </li>
+            </motion.li>
           ))}
           {pkg.inclusions.length > 6 && (
             <li className="text-xs text-gold flex items-center gap-1.5 pl-7">
@@ -133,14 +141,16 @@ function PackageCard({ pkg, index }: PackageCardProps) {
 
         {/* Actions — premium footer */}
         <div className="flex flex-col gap-2.5">
-          <Button
-            variant="primary"
-            size="md"
-            onClick={handleCustomize}
-            className="w-full font-devanagari gap-1.5"
-          >
-            Customize Package <span className="text-bg-void text-sm">→</span>
-          </Button>
+          <Magnetic strength={0.15} className="w-full">
+            <Button
+              variant="primary"
+              size="md"
+              onClick={handleCustomize}
+              className="w-full font-devanagari gap-1.5"
+            >
+              पैकेज कस्टमाइज करें <span className="text-bg-void text-sm">→</span>
+            </Button>
+          </Magnetic>
           <Button
             variant="outline"
             size="md"
@@ -154,7 +164,9 @@ function PackageCard({ pkg, index }: PackageCardProps) {
 
       {/* Bottom gold accent */}
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-gold/20 via-gold/40 to-gold/20" />
-    </motion.article>
+    </article>
+    </TiltCard>
+    </StaggerItem>
   )
 }
 
@@ -179,22 +191,24 @@ export function PackagesSection({ packages }: PackagesSectionProps) {
         />
 
         {/* Packages grid — premium cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-12">
+        <Stagger className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-12 lg:pt-3" stagger={0.12}>
           {packages.map((pkg, i) => (
             <PackageCard key={pkg.id} pkg={pkg} index={i} />
           ))}
-        </div>
+        </Stagger>
 
         {/* View all CTA */}
-        <div className="text-center">
-          <Link
-            href="/packages"
-            className="inline-flex items-center gap-1.5 px-8 py-3.5 rounded-xl border border-gold/40 text-gold font-semibold hover:bg-gold/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold font-devanagari"
-          >
-            <span>सभी पैकेज देखें</span>
-            <span className="text-gold-dim">↓</span>
-          </Link>
-        </div>
+        <Reveal className="text-center">
+          <Magnetic strength={0.2}>
+            <Link
+              href="/packages"
+              className="group/cta inline-flex items-center gap-2 px-8 py-3.5 rounded-xl border border-gold/40 text-gold font-semibold hover:bg-gold/10 hover:border-gold hover:shadow-gold-glow-sm transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold font-devanagari"
+            >
+              <span>सभी पैकेज देखें</span>
+              <span className="transition-transform duration-300 group-hover/cta:translate-x-1">→</span>
+            </Link>
+          </Magnetic>
+        </Reveal>
       </div>
     </section>
   )

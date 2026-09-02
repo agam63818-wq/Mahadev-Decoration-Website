@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import { cn } from '@/utils/cn'
 import { SectionFlourish } from './SectionFlourish'
+import { EASE_PREMIUM, TextReveal } from '@/components/motion'
 
 interface SectionHeadingProps {
   title: string
@@ -36,21 +37,18 @@ export function SectionHeading({
       {/* Premium flourish divider */}
       {showFlourish && <SectionFlourish align={align} />}
 
-      {/* Title — big gold gradient */}
-      <motion.h2
+      {/* Title — big gold gradient, word-by-word reveal */}
+      <TextReveal
+        as="h2"
         id={id}
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-50px' }}
-        transition={{ duration: 0.6, ease: 'easeOut' }}
+        text={title}
+        stagger={0.07}
         className={cn(
-          'text-3xl md:text-4xl lg:text-5xl font-display font-bold leading-tight',
-          'bg-gradient-to-r from-champagne via-gold to-champagne bg-clip-text text-transparent',
+          'text-3xl md:text-4xl lg:text-5xl font-display font-devanagari font-bold leading-tight tracking-tight',
           titleClassName
         )}
-      >
-        {title}
-      </motion.h2>
+        wordClassName="bg-gradient-to-r from-champagne via-gold to-champagne bg-clip-text text-transparent"
+      />
 
       {/* Subtitle — muted but elegant */}
       {subtitle && (
@@ -58,7 +56,7 @@ export function SectionHeading({
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-50px' }}
-          transition={{ duration: 0.6, delay: 0.12, ease: 'easeOut' }}
+          transition={{ duration: 0.7, delay: 0.25, ease: EASE_PREMIUM }}
           className={cn(
             'text-text-muted text-base md:text-lg max-w-2xl font-devanagari leading-relaxed',
             subtitleClassName

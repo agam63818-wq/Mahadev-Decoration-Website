@@ -51,7 +51,12 @@ export function AdminShell({
   }
 
   return (
-    <div className="min-h-screen bg-bg-void">
+    <div className="relative min-h-screen bg-bg-void">
+      {/* Calm ambient brand glow — same palette as the public site, far quieter */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 -z-0 bg-[radial-gradient(900px_circle_at_15%_-10%,rgba(201,168,76,0.07),transparent_60%),radial-gradient(700px_circle_at_100%_100%,rgba(139,30,63,0.10),transparent_60%)]"
+      />
       <AdminSidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((v) => !v)}
@@ -61,15 +66,16 @@ export function AdminShell({
 
       {/* Main content area */}
       <div
-        className={`transition-all duration-300 pt-16 px-4 lg:px-8 pb-12 ${
+        className={`relative z-10 transition-all duration-300 pt-16 px-4 lg:px-8 pb-12 ${
           sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
         }`}
       >
         <div className="max-w-7xl mx-auto">
           {/* Header bar */}
-          <header className="flex flex-wrap items-center justify-between gap-4 mb-8">
+          <header className="relative flex flex-wrap items-center justify-between gap-4 mb-8 pb-5">
+            <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-gold/40 via-gold/10 to-transparent" aria-hidden="true" />
             <div>
-              <h1 className="text-2xl font-display font-bold text-gold font-devanagari">
+              <h1 className="text-2xl font-display font-bold font-devanagari bg-gradient-to-r from-champagne via-gold to-gold-bright bg-clip-text text-transparent">
                 एडमिन पैनल
               </h1>
               <p className="text-text-muted text-sm mt-1 font-devanagari">
@@ -93,7 +99,7 @@ export function AdminShell({
               <button
                 onClick={handleLogout}
                 disabled={loggingOut}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gold/30 text-text-muted hover:text-gold hover:border-gold/50 text-sm font-devanagari transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gold/30 bg-bg-rich/60 text-text-muted hover:text-gold hover:border-gold/60 hover:shadow-gold-glow-sm text-sm font-devanagari transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loggingOut ? (
                   <Loader2 size={16} className="animate-spin" />
@@ -106,7 +112,8 @@ export function AdminShell({
           </header>
 
           {/* Actual page content — this is what the old AdminHeader dropped. */}
-          <div className="min-h-[60vh]">{children}</div>
+          {/* Minimal motion in admin: a single soft fade on mount, nothing per-item. */}
+          <div className="min-h-[60vh] motion-safe:animate-[reveal-in_0.35s_ease-out]">{children}</div>
         </div>
       </div>
     </div>

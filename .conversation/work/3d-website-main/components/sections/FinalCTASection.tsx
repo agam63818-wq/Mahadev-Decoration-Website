@@ -1,12 +1,26 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { MessageCircle, ArrowRight, Sparkles, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Magnetic, Reveal, TextReveal } from '@/components/motion'
 import { useBusinessSettings, useContactAvailability } from '@/components/providers/BusinessSettingsProvider'
 import { buildWhatsAppUrl } from '@/utils/booking'
 
+// Deterministic bokeh positions (no Math.random in render → no hydration mismatch)
+const BOKEH = Array.from({ length: 10 }, (_, i) => {
+  const t = (i * 137.508) % 360 // golden angle spread
+  return {
+    size: 24 + ((i * 37) % 70),
+    left: (t / 360) * 100,
+    top: ((i * 53) % 100),
+    delay: (i % 5) * 1.1,
+    duration: 7 + (i % 4) * 1.5,
+  }
+})
+
 export function FinalCTASection() {
+  const reduce = useReducedMotion()
   // Live from business_settings — one admin edit updates every CTA.
   const businessSettings = useBusinessSettings()
   const { phone, whatsapp, hasPhone, hasWhatsapp } = useContactAvailability()
@@ -29,22 +43,24 @@ export function FinalCTASection() {
       <div className="absolute -bottom-40 right-1/4 w-[400px] h-[400px] rounded-full bg-burgundy/10 blur-3xl pointer-events-none" />
 
       {/* Decorative floating bokeh */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-        {[...Array(10)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute rounded-full bg-gold opacity-5 animate-float-slow"
-            style={{
-              width: `${Math.random() * 80 + 20}px`,
-              height: `${Math.random() * 80 + 20}px`,
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 5}s`,
-              animationDuration: `${Math.random() * 5 + 6}s`,
-            }}
-          />
-        ))}
-      </div>
+      {!reduce && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none hidden sm:block" aria-hidden="true">
+          {BOKEH.map((b, i) => (
+            <div
+              key={i}
+              className="absolute rounded-full bg-gold opacity-[0.06] blur-[2px] animate-float-slow"
+              style={{
+                width: `${b.size}px`,
+                height: `${b.size}px`,
+                left: `${b.left}%`,
+                top: `${b.top}%`,
+                animationDelay: `${b.delay}s`,
+                animationDuration: `${b.duration}s`,
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Marble texture accent */}
       <div className="absolute inset-0 opacity-[0.02] pointer-events-none"
@@ -53,27 +69,51 @@ export function FinalCTASection() {
 
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         {/* Rich gold divider — elegant */}
-        <div className="flex items-center justify-center gap-4 mb-8">
-          <div className="w-12 h-px bg-gradient-to-r from-transparent to-gold/60" />
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gold-warm/30 to-bg-void/5 border border-gold/30 flex items-center justify-center shadow-lg shadow-gold/10">
+        <Reveal className="flex items-center justify-center gap-4 mb-8" y={10}>
+          <motion.div
+            initial={{ scaleX: 0 }}
+            whileInView={{ scaleX: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="w-12 h-px origin-right bg-gradient-to-r from-transparent to-gold/60"
+          />
+          <motion.div
+            animate={reduce ? undefined : { rotate: [0, 12, -12, 0] }}
+            transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+            className="w-8 h-8 rounded-full bg-gradient-to-br from-gold-warm/30 to-bg-void/5 border border-gold/30 flex items-center justify-center shadow-gold-glow-sm"
+          >
             <Sparkles size={16} className="text-gold" />
-          </div>
-          <div className="w-12 h-px bg-gradient-to-l from-transparent to-gold/60" />
-        </div>
+          </motion.div>
+          <motion.div
+            initial={{ scaleX: 0 }}
+            whileInView={{ scaleX: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="w-12 h-px origin-left bg-gradient-to-l from-transparent to-gold/60"
+          />
+        </Reveal>
 
         {/* Heading — premium gold gradient — large */}
-        <motion.h2
+        <h2
           id="final-cta-heading"
-          initial={{ opacity: 0, y: 28 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-50px' }}
-          transition={{ duration: 0.7, ease: 'easeOut' }}
-          className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-display font-bold font-devanagari mb-4 leading-tight text-gradient-gold"
+          className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-display font-bold font-devanagari mb-4 leading-tight"
         >
-          आपका अगला खास दिन
-          <br />
-          और भी खूबसूरत बनाते हैं।
-        </motion.h2>
+          <TextReveal
+            as="span"
+            text="आपका अगला खास दिन"
+            className="block"
+            wordClassName="gradient-gold-text"
+            stagger={0.08}
+          />
+          <TextReveal
+            as="span"
+            text="और भी खूबसूरत बनाते हैं।"
+            className="block"
+            wordClassName="gradient-gold-text"
+            stagger={0.08}
+            delay={0.35}
+          />
+        </h2>
 
         {/* Subtitle — elegant */}
         <motion.p
@@ -92,25 +132,28 @@ export function FinalCTASection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-50px' }}
           transition={{ duration: 0.6, delay: 0.25, ease: 'easeOut' }}
-          className="flex flex-col sm:flex-row gap-4 justify-center"
+          className="flex flex-col sm:flex-row gap-4 justify-center items-center"
         >
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={() => (window.location.href = '/booking')}
-            className="font-devanagari text-lg px-10 gap-2"
-            glow
-          >
-            <span>बुकिंग शुरू करें</span>
-            <span className="text-bg-void text-sm font-normal">→</span>
-          </Button>
+          <Magnetic strength={0.25}>
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => (window.location.href = '/booking')}
+              className="font-devanagari text-lg px-10 gap-2 shadow-gold-glow hover:shadow-gold-glow-lg"
+              glow
+            >
+              <span>बुकिंग शुरू करें</span>
+              <span className="text-bg-void text-sm font-normal">→</span>
+            </Button>
+          </Magnetic>
 
           {hasWhatsapp && (
+          <Magnetic strength={0.2}>
           <a
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-3 px-8 py-4 rounded-xl bg-gradient-to-r from-[#25D366] to-[#128C7E] text-white font-semibold text-lg hover:shadow-xl hover:shadow-emerald-500/20 transition-all duration-300 shadow-lg shadow-emerald-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2 focus-visible:ring-offset-bg-void group"
+            className="inline-flex items-center gap-3 px-8 py-4 rounded-xl bg-gradient-to-r from-[#25D366] to-[#128C7E] text-white font-semibold text-lg hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98] transition-all duration-300 shadow-lg shadow-emerald-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2 focus-visible:ring-offset-bg-void group"
           >
             <span>
               <span className="flex items-center gap-2">
@@ -124,6 +167,7 @@ export function FinalCTASection() {
               className="text-white/70 group-hover:text-white transition-all group-hover:translate-x-1"
             />
           </a>
+          </Magnetic>
           )}
         </motion.div>
 

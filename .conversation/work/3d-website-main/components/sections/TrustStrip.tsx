@@ -11,7 +11,7 @@ const trustItems: Array<{ label: string; iconKey: TrustIconKey; color: string }>
   { label: 'उचित मूल्य', iconKey: 'CreditCard', color: 'text-emerald-400' },
   { label: 'कस्टम डिजाइन', iconKey: 'Palette', color: 'text-rose' },
   { label: 'समय पर सेवा', iconKey: 'Clock', color: 'text-gold' },
-  { label: '24/7 सपोर्ट', iconKey: 'Headphones', color: 'text-blue-400' },
+  { label: '24/7 सपोर्ट', iconKey: 'Headphones', color: 'text-champagne' },
   { label: 'प्रीमियम क्वालिटी', iconKey: 'Sparkles', color: 'text-gold' },
   { label: '100% संतुष्टि', iconKey: 'Heart', color: 'text-rose' },
   { label: '1500+ इवेंट्स', iconKey: 'Trophy', color: 'text-gold' },
@@ -80,7 +80,8 @@ export function TrustStrip() {
 
   return (
     <div
-      className="relative py-2.5 overflow-hidden bg-gradient-to-r from-bg-rich via-bg-purple to-bg-rich"
+      id="trust"
+      className="relative py-2.5 overflow-hidden bg-gradient-to-r from-bg-rich via-bg-purple to-bg-rich scroll-mt-16"
       aria-label="हमारी विशेषताएं"
     >
       {/* Subtle top border glow */}

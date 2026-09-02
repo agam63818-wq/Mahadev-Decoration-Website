@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
+import { EASE_PREMIUM } from '@/components/motion'
 import Image from 'next/image'
 import Link from 'next/link'
 import type { PortfolioItem, EventType } from '@/types'
@@ -69,22 +70,34 @@ export function GalleryPageClient({ items, categories }: GalleryPageClientProps)
 
   return (
     <>
+      <LayoutGroup id="gallery-page">
       {/* Filter pills — driven by portfolio_categories from the admin panel */}
       <div className="flex flex-wrap gap-2 mb-8" role="group" aria-label="गैलरी फिल्टर">
-        {[{ value: 'all', label: 'सभी' }, ...pills].map((f) => (
-          <button
-            key={f.value}
-            onClick={() => setActiveFilter(f.value)}
-            aria-pressed={activeFilter === f.value}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold font-devanagari ${
-              activeFilter === f.value
-                ? 'bg-gold text-bg-void shadow-gold-glow-sm'
-                : 'border border-gold/30 text-text-muted hover:border-gold hover:text-champagne'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
+        {[{ value: 'all', label: 'सभी' }, ...pills].map((f) => {
+          const active = activeFilter === f.value
+          return (
+            <motion.button
+              key={f.value}
+              onClick={() => setActiveFilter(f.value)}
+              aria-pressed={active}
+              whileTap={{ scale: 0.95 }}
+              className={`relative px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold font-devanagari ${
+                active
+                  ? 'text-bg-void'
+                  : 'border border-gold/30 text-text-muted hover:border-gold hover:text-champagne hover:bg-bg-void/40'
+              }`}
+            >
+              {active && (
+                <motion.span
+                  layoutId="gallery-page-pill"
+                  className="absolute inset-0 rounded-full bg-gradient-to-r from-gold-warm to-gold shadow-gold-glow-sm"
+                  transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                />
+              )}
+              <span className="relative z-10">{f.label}</span>
+            </motion.button>
+          )
+        })}
       </div>
 
       {/* Grid */}
@@ -107,17 +120,18 @@ export function GalleryPageClient({ items, categories }: GalleryPageClientProps)
                 <motion.article
                   key={item.id}
                   layout
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.35, delay: (i % 8) * 0.04 }}
-                  className="group relative overflow-hidden rounded-xl cursor-pointer border border-gold/10 hover:border-gold/40 transition-colors"
+                  initial={{ opacity: 0, y: 20, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.92, transition: { duration: 0.22 } }}
+                  transition={{ duration: 0.5, delay: (i % 8) * 0.05, ease: EASE_PREMIUM, layout: { duration: 0.45, ease: EASE_PREMIUM } }}
+                  className="group relative overflow-hidden rounded-2xl cursor-pointer border border-gold/10 hover:border-gold/40 shadow-card-lift hover:shadow-gold-glow-sm transition-[border-color,box-shadow] duration-300"
                   onClick={() => setSelectedItem(item)}
                   role="button"
                   tabIndex={0}
                   aria-label={`${item.title} देखें`}
                   onKeyDown={(e) => e.key === 'Enter' && setSelectedItem(item)}
-                  whileHover={{ y: -4, transition: { duration: 0.25 } }}
+                  whileHover={{ y: -6, transition: { duration: 0.25 } }}
+                  whileTap={{ scale: 0.985 }}
                 >
                   <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-bg-purple to-bg-burgundy">
                     <div
@@ -139,15 +153,15 @@ export function GalleryPageClient({ items, categories }: GalleryPageClientProps)
                         src={primaryImage.url}
                         alt={primaryImage.alt}
                         fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+                        className="object-cover transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06] will-change-transform"
                         sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
                         onError={() => {}}
                       />
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-bg-void/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   </div>
-                  <div className="p-3 bg-bg-purple/80">
-                    <h2 className="text-champagne text-sm font-semibold font-devanagari truncate">{item.title}</h2>
+                  <div className="p-3 bg-bg-purple/80 border-t border-gold/10">
+                    <h2 className="text-champagne text-sm font-semibold font-devanagari truncate group-hover:text-gold-bright transition-colors">{item.title}</h2>
                     <p className="text-gold text-xs mt-0.5">{item.priceRange}</p>
                   </div>
                 </motion.article>
@@ -156,6 +170,7 @@ export function GalleryPageClient({ items, categories }: GalleryPageClientProps)
           </AnimatePresence>
         </motion.div>
       )}
+      </LayoutGroup>
 
       {/* Detail modal */}
       <Modal open={!!selectedItem} onClose={() => setSelectedItem(null)} title={selectedItem?.title}>
