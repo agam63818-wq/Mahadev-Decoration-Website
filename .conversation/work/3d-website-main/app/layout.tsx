@@ -6,6 +6,7 @@ import { Footer } from '@/components/layout/Footer'
 import { FloatingActions } from '@/components/layout/FloatingActions'
 import { LenisProvider } from '@/components/layout/LenisProvider'
 import { PageTransition } from '@/components/layout/PageTransition'
+import { PublicChrome } from '@/components/layout/PublicChrome'
 import { BusinessInfoReminder } from '@/components/layout/BusinessInfoReminder'
 import { BusinessSettingsProvider } from '@/components/providers/BusinessSettingsProvider'
 import { getBusinessSettings } from '@/services/business'
@@ -65,17 +66,24 @@ export default async function RootLayout({
     <html lang="hi">
       <body className="bg-bg-void text-text-primary antialiased">
         <BusinessSettingsProvider settings={settings}>
-          <LenisProvider />
-          {/* Staff-only nudge while contact info is incomplete. */}
-          <Suspense fallback={null}>
-            <BusinessInfoReminder />
-          </Suspense>
-          <Navbar />
+          {/* Public-site chrome only. /admin/* has its own shell (sidebar +
+              header) and must not get the marketing navbar, footer, floating
+              pills, bottom action bar or Lenis smooth-scroll. */}
+          <PublicChrome>
+            <LenisProvider />
+            {/* Staff-only nudge while contact info is incomplete. */}
+            <Suspense fallback={null}>
+              <BusinessInfoReminder />
+            </Suspense>
+            <Navbar />
+          </PublicChrome>
           <main id="main-content">
             <PageTransition>{children}</PageTransition>
           </main>
-          <Footer />
-          <FloatingActions />
+          <PublicChrome>
+            <Footer />
+            <FloatingActions />
+          </PublicChrome>
         </BusinessSettingsProvider>
       </body>
     </html>

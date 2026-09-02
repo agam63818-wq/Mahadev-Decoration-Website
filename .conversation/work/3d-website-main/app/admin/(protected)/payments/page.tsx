@@ -43,7 +43,7 @@ const samplePayments: Payment[] = [
 const statusConfig: Record<string, { label: string; color: BadgeVariant }> = {
   completed: { label: 'पूर्ण', color: 'success' },
   pending: { label: 'लंबित', color: 'warning' },
-  failed: { label: 'failed', color: 'danger' },
+  failed: { label: 'असफल', color: 'danger' },
   refunded: { label: 'वापसी', color: 'info' },
 }
 
@@ -87,8 +87,8 @@ export default function AdminPaymentsPage() {
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
       {/* Header */}
       <div className="flex flex-col gap-4 mb-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-display font-bold text-gold font-devanagari">पेमेंट प्रबंधन</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl sm:text-2xl font-display font-bold text-gold font-devanagari">पेमेंट प्रबंधन</h1>
           <div className="flex gap-2">
             <Button variant="secondary" size="md">
               <Download size={16} /> रिपोर्ट
@@ -109,12 +109,12 @@ export default function AdminPaymentsPage() {
               className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-bg-void/50 border border-gold/20 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/50 text-sm font-devanagari"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
             {['all', 'completed', 'pending', 'failed', 'refunded'].map((s) => (
               <button
                 key={s}
                 onClick={() => setStatusFilter(s)}
-                className={`px-4 py-2 rounded-xl text-sm font-devanagari transition-all duration-200 ${
+                className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-devanagari transition-all duration-200 ${
                   statusFilter === s
                     ? 'bg-gold/20 text-gold border border-gold/40'
                     : 'bg-bg-void/50 text-text-muted border border-gold/10 hover:border-gold/30'
@@ -128,13 +128,13 @@ export default function AdminPaymentsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 mb-8">
         {[
           { label: 'कुल राजस्व', value: `₹${stats.total.toLocaleString()}`, icon: DollarSign, color: 'from-gold to-gold-light' },
-          { label: 'प्राप्त (Received)', value: `₹${stats.received.toLocaleString()}`, icon: CheckCircle2, color: 'from-emerald-400 to-green-600' },
-          { label: 'लंबित (Pending)', value: `₹${stats.pendingAmt.toLocaleString()}`, icon: Clock, color: 'from-amber-400 to-amber-600' },
-          { label: 'failed', value: `₹${stats.failedAmt.toLocaleString()}`, icon: XCircle, color: 'from-rose-400 to-rose-600' },
-          { label: 'वापसी (Refunds)', value: `₹${stats.refundedAmt.toLocaleString()}`, icon: AlertTriangle, color: 'from-blue-400 to-blue-600' },
+          { label: 'प्राप्त (Received)', value: `₹${stats.received.toLocaleString()}`, icon: CheckCircle2, color: 'from-emerald-400 to-emerald-600' },
+          { label: 'लंबित (Pending)', value: `₹${stats.pendingAmt.toLocaleString()}`, icon: Clock, color: 'from-gold-bright to-gold-warm' },
+          { label: 'असफल (Failed)', value: `₹${stats.failedAmt.toLocaleString()}`, icon: XCircle, color: 'from-rose to-floral-red' },
+          { label: 'वापसी (Refunds)', value: `₹${stats.refundedAmt.toLocaleString()}`, icon: AlertTriangle, color: 'from-champagne to-gold' },
         ].map((stat) => (
           <Card key={stat.label} variant="outline">
             <div className="p-4">
@@ -144,7 +144,7 @@ export default function AdminPaymentsPage() {
                 </div>
               </div>
               <p className="text-text-muted text-xs font-devanagari mb-1">{stat.label}</p>
-              <p className="text-xl font-display font-bold text-gold">{stat.value}</p>
+              <p className="text-lg sm:text-xl font-display font-bold text-gold break-words">{stat.value}</p>
             </div>
           </Card>
         ))}

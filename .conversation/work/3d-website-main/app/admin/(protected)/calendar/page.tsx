@@ -35,11 +35,25 @@ interface CalendarEvent {
 }
 
 const statusColors: Record<CalendarEvent['status'], string> = {
-  pending: 'bg-amber-400/15 text-amber-400 border-amber-400/30',
+  pending: 'bg-gold-bright/15 text-gold-bright border-gold-bright/30',
   confirmed: 'bg-emerald-400/15 text-emerald-400 border-emerald-400/30',
-  'in-progress': 'bg-gold-light/15 text-gold-light border-gold-light/30',
-  completed: 'bg-green-400/15 text-green-400 border-green-400/30',
-  cancelled: 'bg-rose-400/15 text-rose-400 border-rose-400/30',
+  'in-progress': 'bg-champagne/15 text-champagne border-champagne/30',
+  completed: 'bg-gold/15 text-gold border-gold/30',
+  cancelled: 'bg-floral-red/25 text-rose border-rose/30',
+}
+const statusDot: Record<CalendarEvent['status'], string> = {
+  pending: '#E8C858',
+  confirmed: '#34D399',
+  'in-progress': '#F5E8D0',
+  completed: '#C9A84C',
+  cancelled: '#E8A0B4',
+}
+const statusLabels: Record<CalendarEvent['status'], string> = {
+  pending: 'लंबित',
+  confirmed: 'कॉन्फर्म',
+  'in-progress': 'चल रहा',
+  completed: 'पूर्ण',
+  cancelled: 'रद्द',
 }
 
 const eventIcons: Record<EventType, string> = {
@@ -108,8 +122,8 @@ export default function AdminCalendarPage() {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
       <div className="flex flex-col gap-4 mb-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-display font-bold text-gold font-devanagari">कैलेंडर</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl sm:text-2xl font-display font-bold text-gold font-devanagari">कैलेंडर</h1>
           <div className="flex gap-2">
             {([
               { key: 'month', label: 'माह' },
@@ -130,7 +144,7 @@ export default function AdminCalendarPage() {
             ))}
           </div>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={goToPrev}>
               <ChevronLeft size={16} />
@@ -157,15 +171,15 @@ export default function AdminCalendarPage() {
       <div className="flex flex-wrap gap-2 mb-4">
         {(['pending', 'confirmed', 'in-progress', 'completed', 'cancelled'] as const).map((s) => (
           <div key={s} className="flex items-center gap-1.5 text-xs text-text-muted font-devanagari">
-            <span className={`w-2.5 h-2.5 rounded-full border ${statusColors[s].split(' ')[0]}`} style={{ background: statusColors[s].includes('bg-amber-400') ? '#f59e0b' : statusColors[s].includes('bg-emerald-400') ? '#10b981' : statusColors[s].includes('bg-gold-light') ? '#F0C868' : statusColors[s].includes('bg-green-400') ? '#22c55e' : '#f43f5e' }} />
-            <span>{s}</span>
+            <span className="w-2.5 h-2.5 rounded-full" style={{ background: statusDot[s] }} />
+            <span>{statusLabels[s]}</span>
           </div>
         ))}
       </div>
 
       {/* Calendar Grid */}
-      <Card variant="outline" className="p-4">
-        <div className="grid grid-cols-7 gap-1">
+      <Card variant="outline" className="p-2 sm:p-4 overflow-x-auto">
+        <div className="grid grid-cols-7 gap-1 min-w-[560px]">
           {/* Header */}
           {['रवि', 'सोम', 'मंगल', 'बुध', 'गुरु', 'शुक्र', 'शनि'].map((d, i) => (
             <div key={i} className="text-center text-xs text-text-muted font-devanagari font-semibold py-2">
@@ -174,14 +188,14 @@ export default function AdminCalendarPage() {
           ))}
           {/* Days */}
           {days.map((day, i) => {
-            if (day === null) return <div key={`empty-${i}`} className="min-h-[80px]" />
+            if (day === null) return <div key={`empty-${i}`} className="min-h-[64px] sm:min-h-[80px]" />
 
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
             const dayEvents = sampleEvents.filter((e) => e.date === dateStr)
             const isToday = dateStr === '2024-10-15' // highlight current day
 
             return (
-              <div key={day} className={`relative min-h-[80px] p-1 border ${isToday ? 'border-gold/50 bg-gold/5' : 'border-gold/5'} rounded-lg`}>
+              <div key={day} className={`relative min-h-[64px] sm:min-h-[80px] p-1 border ${isToday ? 'border-gold/50 bg-gold/5' : 'border-gold/5'} rounded-lg`}>
                 <span className={`text-sm font-devanagari ${isToday ? 'text-gold font-bold' : 'text-text-primary'}`}>
                   {day}
                 </span>

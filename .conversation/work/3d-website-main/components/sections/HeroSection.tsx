@@ -159,14 +159,14 @@ export function HeroSection() {
             src={HERO_POSTER}
             alt=""
             aria-hidden="true"
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover hero-media"
             fetchPriority="high"
             decoding="async"
           />
           {!reduce && (
             <video
               ref={videoRef}
-              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000"
+              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 hero-media"
               style={{ opacity: videoReady ? 1 : 0 }}
               src={HERO_VIDEO}
               poster={HERO_POSTER}
@@ -184,11 +184,14 @@ export function HeroSection() {
           )}
         </motion.div>
 
-        {/* Cinematic grading: darken for legibility, keep the gold warmth */}
-        <div className="absolute inset-0 bg-gradient-to-r from-bg-void via-bg-void/75 to-bg-void/30" />
-        <div className="absolute inset-0 bg-gradient-to-t from-bg-void via-bg-void/30 to-bg-void/60" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(7,4,12,0.75)_100%)]" />
-        <div className="absolute inset-0 mix-blend-multiply bg-bg-purple/30" />
+        {/* Cinematic grading — deliberately light so the decoration footage
+            stays visible (especially on phones). Legibility comes from the
+            soft scrim behind the copy, not from blacking out the whole frame. */}
+        <div className="absolute inset-0 bg-gradient-to-r from-bg-void/70 via-bg-void/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-bg-void/85 via-transparent to-bg-void/35" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(7,4,12,0.35)_100%)]" />
+        {/* Warm gold wash instead of a purple multiply — lifts, not dims */}
+        <div className="absolute inset-0 mix-blend-soft-light bg-gradient-to-br from-gold/25 via-transparent to-floral-red/20" />
 
         {/* Fine grain */}
         <div
@@ -233,8 +236,9 @@ export function HeroSection() {
         }}
       >
         <motion.div style={{ y: parallaxEnabled ? fgY : 0 }} className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-end">
-          {/* Left — headline */}
-          <div className="lg:col-span-8 flex flex-col gap-6">
+          {/* Left — headline. `hero-copy-scrim` adds a soft local shadow behind
+              the text so it reads over bright footage without darkening the frame. */}
+          <div className="lg:col-span-8 flex flex-col gap-6 hero-copy-scrim">
             {/* Eyebrow */}
             <motion.div
               initial={reduce ? false : { opacity: 0, y: 14 }}
@@ -374,7 +378,7 @@ export function HeroSection() {
       </motion.a>
 
       {/* Bottom fade into next section */}
-      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-bg-void via-bg-void/70 to-transparent pointer-events-none" />
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-bg-void via-bg-void/50 to-transparent pointer-events-none" />
     </section>
   )
 }

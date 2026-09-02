@@ -73,7 +73,7 @@ export function DataTable<T>({
   return (
     <Card variant="outline" className="overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-gold/10 bg-bg-void/30">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 py-3 border-b border-gold/10 bg-bg-void/30">
         <div className="flex items-center gap-2 text-sm text-text-muted font-devanagari">
           <span>{data.length} रिकॉर्ड</span>
           <Button
@@ -97,7 +97,7 @@ export function DataTable<T>({
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr className="border-b border-gold/10 bg-bg-void/50">
               {columns.map((col) => (
