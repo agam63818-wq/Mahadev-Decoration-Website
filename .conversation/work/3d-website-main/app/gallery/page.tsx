@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { SectionHeading } from '@/components/ui/SectionHeading'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { RetryableErrorState } from '@/components/ui/RetryableErrorState'
 import { getAllPortfolioItems, getPortfolioCategories } from '@/services/portfolio'
 import { GalleryPageClient } from '@/features/gallery/GalleryPageClient'
 
@@ -19,10 +21,12 @@ export const metadata: Metadata = {
 export default async function GalleryPage() {
   // force-dynamic + no-store queries: admin edits appear here immediately,
   // without any redeploy.
-  const [items, categories] = await Promise.all([
+  const [itemsResult, categories] = await Promise.all([
     getAllPortfolioItems(),
     getPortfolioCategories(),
   ])
+
+  const items = itemsResult.ok ? itemsResult.data : []
 
   return (
     <div className="min-h-screen bg-bg-void pt-20">
@@ -35,9 +39,21 @@ export default async function GalleryPage() {
         </div>
       </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <Suspense fallback={<div className="text-text-muted text-center py-12">लोड हो रहा है...</div>}>
-          <GalleryPageClient items={items} categories={categories} />
-        </Suspense>
+        {/* Real portfolio rows only — no static seed fallback. */}
+        {!itemsResult.ok ? (
+          <RetryableErrorState />
+        ) : items.length === 0 ? (
+          <EmptyState
+            title="अभी कोई डिजाइन नहीं"
+            description="गैलरी में अभी कोई तस्वीर नहीं जोड़ी गई है।"
+          />
+        ) : (
+          <Suspense
+            fallback={<div className="text-text-muted text-center py-12">लोड हो रहा है...</div>}
+          >
+            <GalleryPageClient items={items} categories={categories} />
+          </Suspense>
+        )}
       </div>
     </div>
   )

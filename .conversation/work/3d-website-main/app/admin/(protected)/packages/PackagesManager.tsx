@@ -1,44 +1,56 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
+// ─── /admin/packages (PART 2 §12 + §9) ────────────────────────────────────────
+//
+// This is an UPGRADE of the existing packages manager, not a parallel system:
+// every Server Action it calls (`savePackage`, `deletePackage`,
+// `savePackageItem`, `deletePackageItem`, `reorderPackageItems`) is the one
+// that was already here. What changed is the surface the owner touches.
+//
+// BEFORE: one modal form for everything. To fix a price the owner tapped Edit,
+// waited for a modal, scrolled past nine fields, saved, and the modal closed —
+// and the bullet inclusions lived in a separate expand-panel with drag-only
+// reordering that does not work on touch.
+//
+// NOW: the card itself is the editor (shared EditableCard, identical to
+// services and occasions), so the frequent edits — name, price range, photo,
+// featured/active — are two taps. The genuinely complex fields (setup time,
+// decoration area, customizable, slug-affecting rename) live in a compact
+// Advanced section revealed inside the SAME edit mode, so it is one workflow,
+// not two. Inclusions are edited inline with ↑ ↓ controls.
+
+import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import {
-  Package as PackageIcon,
-  Star,
-  Eye,
-  EyeOff,
-  Trash2,
-  Edit,
-  Plus,
-  GripVertical,
-  Check,
-  Clock,
-  Maximize2,
-  X,
-} from 'lucide-react'
-import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { Badge } from '@/components/ui/Badge'
+import { Clock, Maximize2, Package as PackageIcon, Sparkles } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Toast } from '@/components/ui/Toast'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Card } from '@/components/ui/Card'
+import { RetryableErrorState } from '@/components/ui/RetryableErrorState'
+import {
+  AddCardTile,
+  EditableCard,
+  draftToNum,
+  numToDraft,
+  type CardActionResult,
+  type DraftValues,
+  type EditableField,
+} from '@/components/admin/EditableCard'
+import { ReorderControls } from '../services/ServicesManager'
+import { PackageItemsEditor, type AdminPackageItem } from './PackageItemsEditor'
+import { ADMIN_MSG, friendlyError } from '@/lib/admin/messages'
 import { formatPrice } from '@/utils/booking'
 import {
-  savePackage,
   deletePackage,
-  savePackageItem,
-  deletePackageItem,
-  reorderPackageItems,
+  reorderPackages,
+  savePackage,
+  setPackageFlags,
+  uploadPackageImage,
 } from './actions'
 
-// ─── Types (plain data — passed from the server page) ─────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface AdminPackageItem {
-  id: string
-  label: string
-  sortOrder: number
-}
+export type { AdminPackageItem }
 
 export interface AdminPackage {
   id: string
@@ -52,57 +64,135 @@ export interface AdminPackage {
   customizable: boolean
   isFeatured: boolean
   isActive: boolean
+  /** Raw DB value — distinguishes "no photo" from "photo present". */
+  imageUrl: string | null
+  imagePublicUrl: string
+  imageAlt: string
+  sortOrder: number
   items: AdminPackageItem[]
 }
 
 interface PackagesManagerProps {
   initialPackages: AdminPackage[]
   supabaseReady: boolean
+  loadFailed: boolean
 }
 
-interface PackageFormState {
-  id?: string
-  name: string
-  slug: string
-  description: string
-  startingPrice: string
-  priceMax: string
-  setupTimeMinutes: string
-  decorationArea: string
-  customizable: boolean
-  isFeatured: boolean
-  isActive: boolean
-}
+// ─── Field descriptors ────────────────────────────────────────────────────────
+//
+// Packages have NO name_en and NO event_type columns in the live schema, so
+// neither is offered here — showing them would produce saves that silently
+// drop data.
 
-const EMPTY_FORM: PackageFormState = {
-  name: '',
-  slug: '',
-  description: '',
-  startingPrice: '',
-  priceMax: '',
-  setupTimeMinutes: '',
-  decorationArea: '',
-  customizable: true,
-  isFeatured: false,
-  isActive: true,
-}
+const FIELDS: EditableField[] = [
+  {
+    name: 'name',
+    label: 'पैकेज का नाम',
+    kind: 'text',
+    required: true,
+    maxLength: 120,
+    placeholder: 'जैसे: प्रीमियम वेडिंग पैकेज',
+    focusFirst: true,
+  },
+  {
+    name: 'description',
+    label: 'विवरण',
+    kind: 'textarea',
+    maxLength: 2000,
+    placeholder: 'ग्राहक को क्या मिलेगा',
+  },
+  {
+    name: 'startingPrice',
+    label: 'शुरुआती कीमत (₹)',
+    kind: 'price',
+    integer: true,
+    min: 0,
+    max: 10000000,
+    half: true,
+    help: 'खाली = कीमत नहीं दिखेगी',
+  },
+  {
+    name: 'priceMax',
+    label: 'अधिकतम कीमत (₹)',
+    kind: 'price',
+    integer: true,
+    min: 0,
+    max: 10000000,
+    half: true,
+    help: 'रेंज दिखाने के लिए',
+  },
+  {
+    name: 'imageAlt',
+    label: 'फोटो का विवरण (SEO)',
+    kind: 'text',
+    maxLength: 200,
+    half: true,
+  },
+  {
+    // §12 calls setup time and decoration area "complex"; they are still just
+    // two fields, so a compact half-width pair inside the same edit mode is
+    // simpler for the owner than a second modal.
+    name: 'setupTimeMinutes',
+    label: 'सेटअप समय (मिनट)',
+    kind: 'number',
+    integer: true,
+    min: 0,
+    max: 60 * 24 * 30,
+    half: true,
+    placeholder: '240',
+    help: 'मिनटों में — 240 = 4 घंटे',
+  },
+  {
+    name: 'decorationArea',
+    label: 'सजावट का क्षेत्र',
+    kind: 'text',
+    maxLength: 200,
+    placeholder: 'जैसे: स्टेज + एंट्री गेट',
+  },
+  {
+    /*
+     * §20: `customizable` drives a visible "मनपसंद बदलाव संभव" badge on the
+     * home-page section, the packages list AND the package detail page, but it
+     * had no admin control — saving a package silently re-sent the old value.
+     * A public-facing property with no admin path is exactly what §20 forbids.
+     */
+    name: 'customizable',
+    label: 'मनपसंद बदलाव संभव?',
+    kind: 'select',
+    half: true,
+    options: [
+      { value: 'yes', label: 'हाँ — बैज दिखाएँ' },
+      { value: 'no', label: 'नहीं' },
+    ],
+    help: 'वेबसाइट पर बैज के रूप में दिखता है',
+  },
+]
 
-function formFromPackage(pkg: AdminPackage): PackageFormState {
+function valuesOf(pkg: AdminPackage): DraftValues {
   return {
-    id: pkg.id,
     name: pkg.name,
-    slug: pkg.slug,
     description: pkg.description,
-    startingPrice: pkg.startingPrice != null ? String(pkg.startingPrice) : '',
-    priceMax: pkg.priceMax != null ? String(pkg.priceMax) : '',
-    setupTimeMinutes: pkg.setupTimeMinutes != null ? String(pkg.setupTimeMinutes) : '',
+    startingPrice: numToDraft(pkg.startingPrice),
+    priceMax: numToDraft(pkg.priceMax),
+    imageAlt: pkg.imageAlt,
+    setupTimeMinutes: numToDraft(pkg.setupTimeMinutes),
     decorationArea: pkg.decorationArea,
-    customizable: pkg.customizable,
-    isFeatured: pkg.isFeatured,
-    isActive: pkg.isActive,
+    customizable: pkg.customizable ? 'yes' : 'no',
   }
 }
 
+const DRAFT_VALUES: DraftValues = {
+  name: '',
+  description: '',
+  startingPrice: '',
+  priceMax: '',
+  imageAlt: '',
+  setupTimeMinutes: '',
+  decorationArea: '',
+  customizable: 'yes',
+}
+
+/** Minutes → the phrase the owner would actually say. */
 function formatSetupTime(minutes: number | null): string {
   if (minutes == null || minutes <= 0) return ''
   if (minutes >= 60 * 24) return `${Math.round(minutes / (60 * 24))} दिन`
@@ -110,619 +200,346 @@ function formatSetupTime(minutes: number | null): string {
   return `${minutes} मिनट`
 }
 
+/** Price line: a range when both ends exist, otherwise whichever one does. */
+function priceLabel(pkg: AdminPackage): string {
+  if (pkg.startingPrice != null && pkg.priceMax != null && pkg.priceMax > pkg.startingPrice) {
+    return `${formatPrice(pkg.startingPrice)} – ${formatPrice(pkg.priceMax)}`
+  }
+  if (pkg.startingPrice != null) return `${formatPrice(pkg.startingPrice)} से`
+  if (pkg.priceMax != null) return `${formatPrice(pkg.priceMax)} तक`
+  return 'कीमत नहीं डाली गई'
+}
+
 // ─── Manager ──────────────────────────────────────────────────────────────────
 
-export function PackagesManager({ initialPackages, supabaseReady }: PackagesManagerProps) {
+export function PackagesManager({
+  initialPackages,
+  supabaseReady,
+  loadFailed,
+}: PackagesManagerProps) {
   const router = useRouter()
-  const [isPending, startTransition] = useTransition()
-  const [toast, setToast] = useState<{
-    open: boolean
-    type: 'success' | 'error' | 'info'
-    title: string
-    description?: string
-  }>({ open: false, type: 'info', title: '' })
-
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState<PackageFormState>(EMPTY_FORM)
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [, startTransition] = useTransition()
+  const [toast, setToast] = useState<{ open: boolean; type: 'success' | 'error'; title: string }>({
+    open: false,
+    type: 'success',
+    title: '',
+  })
   const [deleteTarget, setDeleteTarget] = useState<AdminPackage | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [showDraft, setShowDraft] = useState(false)
+  const [reorderingId, setReorderingId] = useState<string | null>(null)
 
-  // Inclusions editing state (per expanded package).
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [newItemLabel, setNewItemLabel] = useState('')
-  const [editingItem, setEditingItem] = useState<{ id: string; label: string } | null>(null)
-  const dragItemId = useRef<string | null>(null)
+  const packages = useMemo(
+    () => [...initialPackages].sort((a, b) => a.sortOrder - b.sortOrder),
+    [initialPackages],
+  )
 
-  function showToast(type: 'success' | 'error', title: string, description?: string) {
-    setToast({ open: true, type, title, description })
+  function notify(kind: 'ok' | 'error', text: string) {
+    setToast({ open: true, type: kind === 'ok' ? 'success' : 'error', title: text })
   }
 
-  // ── Package form ────────────────────────────────────────────────────────────
-
-  function openCreate() {
-    setForm(EMPTY_FORM)
-    setFieldErrors({})
-    setShowForm(true)
+  function refresh() {
+    startTransition(() => router.refresh())
   }
 
-  function openEdit(pkg: AdminPackage) {
-    setForm(formFromPackage(pkg))
-    setFieldErrors({})
-    setShowForm(true)
-  }
+  async function handleSave(
+    pkg: AdminPackage | null,
+    values: DraftValues,
+  ): Promise<CardActionResult> {
+    const startingPrice = draftToNum(values.startingPrice)
+    const priceMax = draftToNum(values.priceMax)
 
-  function validateForm(): boolean {
-    const errors: Record<string, string> = {}
-    if (!form.name.trim()) errors.name = 'पैकेज का नाम ज़रूरी है'
-    if (form.slug && !/^[a-z0-9-]*$/.test(form.slug))
-      errors.slug = 'स्लग में सिर्फ़ छोटे अंग्रेज़ी अक्षर, अंक और डैश चलेंगे'
-    if (form.startingPrice && (isNaN(Number(form.startingPrice)) || Number(form.startingPrice) < 0))
-      errors.startingPrice = 'सही कीमत डालें'
-    if (form.priceMax && (isNaN(Number(form.priceMax)) || Number(form.priceMax) < 0))
-      errors.priceMax = 'सही कीमत डालें'
-    if (
-      form.startingPrice &&
-      form.priceMax &&
-      !errors.startingPrice &&
-      !errors.priceMax &&
-      Number(form.priceMax) < Number(form.startingPrice)
-    )
-      errors.priceMax = 'अधिकतम कीमत शुरुआती कीमत से कम नहीं हो सकती'
-    if (
-      form.setupTimeMinutes &&
-      (isNaN(Number(form.setupTimeMinutes)) || Number(form.setupTimeMinutes) < 0)
-    )
-      errors.setupTimeMinutes = 'सही समय डालें (मिनटों में)'
+    // Cross-field rule the per-field validator cannot express. Checked here as
+    // well as in the Zod schema so the owner sees it before the round-trip.
+    if (startingPrice != null && priceMax != null && priceMax < startingPrice) {
+      return { ok: false, error: 'अधिकतम कीमत शुरुआती कीमत से कम नहीं हो सकती' }
+    }
 
-    setFieldErrors(errors)
-    return Object.keys(errors).length === 0
-  }
-
-  function handleSave() {
-    if (!validateForm()) return
-
-    startTransition(async () => {
-      const result = await savePackage({
-        id: form.id,
-        name: form.name,
-        slug: form.slug || undefined,
-        description: form.description,
-        startingPrice: form.startingPrice ? Number(form.startingPrice) : null,
-        priceMax: form.priceMax ? Number(form.priceMax) : null,
-        setupTimeMinutes: form.setupTimeMinutes ? Number(form.setupTimeMinutes) : null,
-        decorationArea: form.decorationArea,
-        customizable: form.customizable,
-        isFeatured: form.isFeatured,
-        isActive: form.isActive,
-      })
-
-      if (result.ok) {
-        showToast('success', form.id ? 'पैकेज अपडेट हो गया' : 'नया पैकेज बन गया')
-        setShowForm(false)
-        router.refresh()
-      } else {
-        showToast('error', 'सेव नहीं हुआ', result.error)
-      }
+    const result = await savePackage({
+      id: pkg?.id,
+      name: values.name,
+      // The slug is intentionally NOT sent: renaming a package must not change
+      // its public URL, which the owner may already have shared on WhatsApp.
+      description: values.description,
+      startingPrice,
+      priceMax,
+      setupTimeMinutes: draftToNum(values.setupTimeMinutes),
+      decorationArea: values.decorationArea,
+      // §20: now the owner's actual choice, not a pass-through of the old value.
+      customizable: values.customizable !== 'no',
+      isFeatured: pkg?.isFeatured ?? false,
+      isActive: pkg?.isActive ?? true,
     })
+
+    if (result.ok) {
+      if (!pkg) setShowDraft(false)
+      refresh()
+    }
+    return result
   }
 
-  function handleDelete() {
-    if (!deleteTarget) return
-    startTransition(async () => {
-      const result = await deletePackage(deleteTarget.id)
-      if (result.ok) {
-        showToast('success', `"${deleteTarget.name}" हटा दिया गया`)
-        setDeleteTarget(null)
-        router.refresh()
-      } else {
-        showToast('error', 'हटाया नहीं जा सका', result.error)
-      }
-    })
+  async function handleUpload(pkg: AdminPackage, file: File): Promise<CardActionResult> {
+    const fd = new FormData()
+    fd.set('id', pkg.id)
+    fd.set('file', file)
+    const result = await uploadPackageImage(fd)
+    if (result.ok) refresh()
+    return result
   }
 
-  // ── Inclusions ──────────────────────────────────────────────────────────────
-
-  function handleAddItem(packageId: string) {
-    const label = newItemLabel.trim()
-    if (!label) return
-    startTransition(async () => {
-      const result = await savePackageItem({ packageId, label })
-      if (result.ok) {
-        setNewItemLabel('')
-        router.refresh()
-      } else {
-        showToast('error', 'सेवा जुड़ नहीं पाई', result.error)
-      }
-    })
+  async function handleFlag(
+    pkg: AdminPackage,
+    patch: { isActive?: boolean; isFeatured?: boolean },
+  ): Promise<CardActionResult> {
+    const result = await setPackageFlags({ id: pkg.id, ...patch })
+    if (result.ok) refresh()
+    return result
   }
 
-  function handleSaveItemEdit() {
-    if (!editingItem) return
-    const label = editingItem.label.trim()
-    if (!label) {
-      setEditingItem(null)
+  async function move(index: number, dir: -1 | 1) {
+    const target = index + dir
+    if (target < 0 || target >= packages.length) return
+
+    const ids = packages.map((p) => p.id)
+    ;[ids[index], ids[target]] = [ids[target], ids[index]]
+
+    setReorderingId(packages[index].id)
+    const result = await reorderPackages(ids)
+    setReorderingId(null)
+
+    if (!result.ok) {
+      notify('error', friendlyError(result.error, ADMIN_MSG.orderFailed))
       return
     }
-    startTransition(async () => {
-      const result = await savePackageItem({ id: editingItem.id, packageId: expandedId!, label })
-      if (result.ok) {
-        setEditingItem(null)
-        router.refresh()
-      } else {
-        showToast('error', 'सेवा अपडेट नहीं हुई', result.error)
-      }
-    })
+    notify('ok', ADMIN_MSG.orderSaved)
+    refresh()
   }
 
-  function handleDeleteItem(itemId: string) {
-    startTransition(async () => {
-      const result = await deletePackageItem(itemId)
-      if (result.ok) {
-        router.refresh()
-      } else {
-        showToast('error', 'सेवा नहीं हटी', result.error)
-      }
-    })
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    const result = await deletePackage(deleteTarget.id)
+    setDeleting(false)
+
+    if (!result.ok) {
+      notify('error', friendlyError(result.error, ADMIN_MSG.deleteFailed))
+      return
+    }
+    setDeleteTarget(null)
+    notify('ok', ADMIN_MSG.deleted)
+    refresh()
   }
 
-  function handleItemDrop(pkg: AdminPackage, targetId: string) {
-    const sourceId = dragItemId.current
-    dragItemId.current = null
-    if (!sourceId || sourceId === targetId) return
-
-    const ids = pkg.items.map((i) => i.id)
-    const from = ids.indexOf(sourceId)
-    const to = ids.indexOf(targetId)
-    if (from === -1 || to === -1) return
-
-    ids.splice(to, 0, ids.splice(from, 1)[0])
-
-    startTransition(async () => {
-      const result = await reorderPackageItems(ids)
-      if (result.ok) {
-        router.refresh()
-      } else {
-        showToast('error', 'क्रम सेव नहीं हुआ', result.error)
-      }
-    })
-  }
-
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="text-2xl font-display font-bold text-gold font-devanagari">पैकेज प्रबंधक</h1>
-        <Button variant="primary" size="md" onClick={openCreate} disabled={!supabaseReady}>
-          <Plus size={16} /> नया पैकेज
-        </Button>
-      </div>
-      <p className="text-text-muted text-sm font-devanagari mb-6">
-        यहां से पैकेज बनाएं, बदलें, featured/active टॉगल करें और शामिल सेवाएं (bullets) प्रबंधित करें।
-        बदलाव तुरंत सार्वजनिक /packages पेज और होमपेज पर दिखेंगे।
-      </p>
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-2xl text-champagne sm:text-3xl">पैकेज</h1>
+          <p className="font-devanagari mt-1 text-sm text-text-muted">
+            कीमत, फोटो और शामिल सेवाएँ यहीं से बदलें — बदलाव तुरंत /packages पेज पर दिखेंगे।
+          </p>
+        </div>
+        {packages.length > 0 && (
+          <span className="font-devanagari rounded-lg border border-gold/20 px-3 py-1.5 text-xs text-text-muted">
+            {packages.filter((p) => p.isActive).length} दिख रहे · {packages.length} कुल
+          </span>
+        )}
+      </header>
 
       {!supabaseReady && (
-        <Card variant="outline" className="p-4 mb-6 border-floral-red/40">
-          <p className="text-floral-red text-sm font-devanagari">
-            Supabase कॉन्फ़िगर नहीं है — बदलाव सेव नहीं होंगे। .env.local जांचें।
+        <Card variant="outline" className="border-floral-red/40 p-5">
+          <p className="font-devanagari text-sm text-rose">
+            Supabase कॉन्फ़िगर नहीं है — बदलाव सेव नहीं होंगे।
           </p>
         </Card>
       )}
 
-      {/* Package list */}
-      <div className="space-y-4">
-        {initialPackages.map((pkg) => (
-          <Card key={pkg.id} variant="outline" className="overflow-hidden">
-            <div className="p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <p className="font-devanagari text-text-primary font-semibold text-lg">{pkg.name}</p>
-                    <Badge variant={pkg.isFeatured ? 'warning' : 'default'} dot>
-                      {pkg.isFeatured ? '⭐ featured' : 'सामान्य'}
-                    </Badge>
-                    <Badge variant={pkg.isActive ? 'success' : 'info'} dot>
-                      {pkg.isActive ? (
-                        <>
-                          <Eye size={10} /> active
-                        </>
-                      ) : (
-                        <>
-                          <EyeOff size={10} /> inactive
-                        </>
-                      )}
-                    </Badge>
-                    {pkg.customizable && <Badge variant="info">कस्टमाइज़ेबल</Badge>}
-                  </div>
-                  <p className="text-xs text-text-muted mb-2">/packages/{pkg.slug}</p>
-                  <div className="flex items-center gap-4 text-sm text-text-muted flex-wrap">
-                    <span className="text-gold font-display font-bold text-xl tabular-nums">
-                      {pkg.startingPrice != null ? formatPrice(pkg.startingPrice) : '—'}
-                      {pkg.priceMax != null && pkg.priceMax > (pkg.startingPrice ?? 0) && (
-                        <span className="text-text-muted text-sm font-normal">
-                          {' '}
-                          – {formatPrice(pkg.priceMax)}
-                        </span>
-                      )}
-                    </span>
-                    {pkg.setupTimeMinutes != null && pkg.setupTimeMinutes > 0 && (
-                      <span className="flex items-center gap-1 font-devanagari">
-                        <Clock size={13} className="text-gold" />
-                        {formatSetupTime(pkg.setupTimeMinutes)}
-                        <span className="text-xs">({pkg.setupTimeMinutes} मिनट)</span>
-                      </span>
-                    )}
-                    {pkg.decorationArea && (
-                      <span className="flex items-center gap-1 font-devanagari">
-                        <Maximize2 size={13} className="text-gold" />
-                        {pkg.decorationArea}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() =>
-                      setExpandedId(expandedId === pkg.id ? null : pkg.id)
-                    }
-                    className="px-3 py-2 rounded-lg bg-gold/10 text-gold text-xs font-devanagari hover:bg-gold/20 transition-colors"
-                  >
-                    सेवाएं ({pkg.items.length})
-                  </button>
-                  <button
-                    onClick={() => openEdit(pkg)}
-                    className="px-3 py-2 rounded-lg bg-gold/20 text-gold text-xs font-devanagari hover:bg-gold/30 transition-colors"
-                  >
-                    <Edit size={12} /> संपादित करें
-                  </button>
-                  <button
-                    onClick={() => setDeleteTarget(pkg)}
-                    className="px-3 py-2 rounded-lg bg-rose-400/20 text-rose-400 text-xs font-devanagari hover:bg-rose-400/30 transition-colors"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              </div>
-
-              {pkg.description && (
-                <p className="text-text-muted text-sm font-devanagari mt-3 leading-relaxed">
-                  {pkg.description}
-                </p>
-              )}
-
-              {/* Inclusions panel */}
-              {expandedId === pkg.id && (
-                <div className="mt-4 pt-4 border-t border-gold/10">
-                  <p className="text-sm text-text-muted font-devanagari mb-3">
-                    शामिल सेवाएं — खींचकर क्रम बदलें (यही क्रम सार्वजनिक पेज पर दिखेगा)
-                  </p>
-                  <ul className="space-y-2 mb-3">
-                    {pkg.items.map((item) => (
-                      <li
-                        key={item.id}
-                        draggable
-                        onDragStart={() => {
-                          dragItemId.current = item.id
-                        }}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={() => handleItemDrop(pkg, item.id)}
-                        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-void/50 border border-gold/10 hover:border-gold/30 transition-colors"
-                      >
-                        <GripVertical size={14} className="text-text-muted cursor-grab flex-shrink-0" />
-                        {editingItem?.id === item.id ? (
-                          <>
-                            <Input
-                              value={editingItem.label}
-                              onChange={(e) =>
-                                setEditingItem({ id: item.id, label: e.target.value })
-                              }
-                              className="flex-1"
-                              autoFocus
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleSaveItemEdit()
-                                if (e.key === 'Escape') setEditingItem(null)
-                              }}
-                            />
-                            <button
-                              onClick={handleSaveItemEdit}
-                              disabled={isPending}
-                              className="p-1.5 text-emerald-400 hover:bg-emerald-400/10 rounded"
-                              aria-label="सेव करें"
-                            >
-                              <Check size={14} />
-                            </button>
-                            <button
-                              onClick={() => setEditingItem(null)}
-                              className="p-1.5 text-text-muted hover:bg-gold/10 rounded"
-                              aria-label="रद्द करें"
-                            >
-                              <X size={14} />
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <span className="flex-1 text-sm text-text-primary font-devanagari">
-                              {item.label}
-                            </span>
-                            <button
-                              onClick={() => setEditingItem({ id: item.id, label: item.label })}
-                              className="p-1.5 text-gold hover:bg-gold/10 rounded"
-                              aria-label="संपादित करें"
-                            >
-                              <Edit size={13} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteItem(item.id)}
-                              disabled={isPending}
-                              className="p-1.5 text-rose-400 hover:bg-rose-400/10 rounded"
-                              aria-label="हटाएं"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </>
-                        )}
-                      </li>
-                    ))}
-                    {pkg.items.length === 0 && (
-                      <li className="text-xs text-text-muted font-devanagari px-3 py-2">
-                        अभी कोई सेवा नहीं — नीचे से जोड़ें।
-                      </li>
-                    )}
-                  </ul>
-                  <div className="flex gap-2">
-                    <Input
-                      value={newItemLabel}
-                      onChange={(e) => setNewItemLabel(e.target.value)}
-                      placeholder="नई सेवा — जैसे: मंडप डेकोरेशन"
-                      className="flex-1"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleAddItem(pkg.id)
-                      }}
-                    />
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleAddItem(pkg.id)}
-                      disabled={isPending || !newItemLabel.trim()}
-                    >
-                      <Plus size={14} /> जोड़ें
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </Card>
-        ))}
-
-        {initialPackages.length === 0 && (
-          <Card variant="outline" className="p-8 text-center">
-            <PackageIcon size={40} className="mx-auto text-text-muted mb-3" />
-            <p className="text-gold font-devanagari font-medium">कोई पैकेज नहीं मिला।</p>
-            <p className="text-text-muted text-sm font-devanagari mt-1">
-              पहला पैकेज बनाएं — वह तुरंत सार्वजनिक पेज पर दिखेगा।
-            </p>
-            <Button
-              variant="primary"
-              size="sm"
-              className="mt-3"
-              onClick={openCreate}
-              disabled={!supabaseReady}
-            >
-              <Plus size={14} /> नया पैकेज बनाएं
-            </Button>
-          </Card>
-        )}
-      </div>
-
-      {/* Create / Edit form panel */}
-      {showForm && (
-        <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-bg-void/80 backdrop-blur-sm p-4">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-2xl my-8 bg-bg-purple border border-gold/20 rounded-2xl p-6"
-          >
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-xl font-display font-bold text-gold font-devanagari">
-                {form.id ? 'पैकेज संपादित करें' : 'नया पैकेज बनाएं'}
-              </h2>
+      {loadFailed ? (
+        <RetryableErrorState
+          title="पैकेज लोड नहीं हो सके"
+          description="कनेक्शन जाँचकर फिर कोशिश करें।"
+        />
+      ) : packages.length === 0 && !showDraft ? (
+        <EmptyState
+          title="अभी कोई पैकेज नहीं है"
+          description="पहला पैकेज बनाएँ — नाम और कीमत भरते ही वह वेबसाइट पर दिखने लगेगा।"
+          action={
+            supabaseReady ? (
               <button
-                onClick={() => setShowForm(false)}
-                className="p-2 text-text-muted hover:text-champagne rounded-lg hover:bg-gold/10"
-                aria-label="बंद करें"
+                type="button"
+                onClick={() => setShowDraft(true)}
+                className="font-devanagari min-h-[44px] rounded-xl bg-gradient-to-r from-gold-bright to-gold-warm px-5 text-sm font-bold text-bg-void"
               >
-                <X size={18} />
+                + नया पैकेज जोड़ें
               </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-devanagari text-text-muted mb-1 block">
-                  पैकेज का नाम *
-                </label>
-                <Input
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="जैसे — प्रीमियम वेडिंग पैकेज"
+            ) : null
+          }
+        />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {packages.map((pkg, index) => (
+            <EditableCard
+              key={pkg.id}
+              id={pkg.id}
+              title={pkg.name}
+              imageUrl={pkg.imagePublicUrl}
+              imageAlt={pkg.imageAlt || pkg.name}
+              fallbackIcon="Package"
+              fields={FIELDS}
+              values={valuesOf(pkg)}
+              isActive={pkg.isActive}
+              isFeatured={pkg.isFeatured}
+              onSave={(values) => handleSave(pkg, values)}
+              onUploadImage={(file) => handleUpload(pkg, file)}
+              onToggleActive={(next) => handleFlag(pkg, { isActive: next })}
+              onToggleFeatured={(next) => handleFlag(pkg, { isFeatured: next })}
+              onRequestDelete={() => setDeleteTarget(pkg)}
+              onNotify={notify}
+              // §9: inclusions are edited in place, inside the card's edit
+              // mode, instead of in a separate expandable panel.
+              extraEdit={
+                <PackageItemsEditor
+                  packageId={pkg.id}
+                  items={pkg.items}
+                  onNotify={notify}
+                  onChanged={refresh}
                 />
-                {fieldErrors.name && (
-                  <p className="text-floral-red text-xs mt-1 font-devanagari">{fieldErrors.name}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-devanagari text-text-muted mb-1 block">
-                    स्लग (URL) — खाली छोड़ें तो अपने आप बनेगा
-                  </label>
-                  <Input
-                    value={form.slug}
-                    onChange={(e) => setForm({ ...form, slug: e.target.value })}
-                    placeholder="wedding-premium"
-                    dir="ltr"
-                  />
-                  {fieldErrors.slug && (
-                    <p className="text-floral-red text-xs mt-1 font-devanagari">
-                      {fieldErrors.slug}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="text-sm font-devanagari text-text-muted mb-1 block">
-                    डेकोरेशन एरिया
-                  </label>
-                  <Input
-                    value={form.decorationArea}
-                    onChange={(e) => setForm({ ...form, decorationArea: e.target.value })}
-                    placeholder="जैसे — पूरा वेन्यू"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-sm font-devanagari text-text-muted mb-1 block">
-                    शुरुआती कीमत (₹)
-                  </label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={form.startingPrice}
-                    onChange={(e) => setForm({ ...form, startingPrice: e.target.value })}
-                    placeholder="15000"
-                  />
-                  {fieldErrors.startingPrice && (
-                    <p className="text-floral-red text-xs mt-1 font-devanagari">
-                      {fieldErrors.startingPrice}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="text-sm font-devanagari text-text-muted mb-1 block">
-                    अधिकतम कीमत (₹)
-                  </label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={form.priceMax}
-                    onChange={(e) => setForm({ ...form, priceMax: e.target.value })}
-                    placeholder="30000"
-                  />
-                  {fieldErrors.priceMax && (
-                    <p className="text-floral-red text-xs mt-1 font-devanagari">
-                      {fieldErrors.priceMax}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="text-sm font-devanagari text-text-muted mb-1 block">
-                    सेटअप समय (मिनट)
-                  </label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={form.setupTimeMinutes}
-                    onChange={(e) => setForm({ ...form, setupTimeMinutes: e.target.value })}
-                    placeholder="180 = 3 घंटे"
-                  />
-                  {fieldErrors.setupTimeMinutes && (
-                    <p className="text-floral-red text-xs mt-1 font-devanagari">
-                      {fieldErrors.setupTimeMinutes}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-devanagari text-text-muted mb-1 block">विवरण</label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="पैकेज का छोटा विवरण…"
-                  rows={3}
-                  className="w-full px-3 py-2.5 rounded-xl bg-bg-void/50 border border-gold/20 text-text-primary text-sm font-devanagari focus:outline-none focus:border-gold/50 resize-y"
+              }
+              viewControls={
+                <ReorderControls
+                  busy={reorderingId === pkg.id}
+                  canUp={index > 0}
+                  canDown={index < packages.length - 1}
+                  onUp={() => void move(index, -1)}
+                  onDown={() => void move(index, 1)}
                 />
-              </div>
+              }
+              preview={<PackagePreview pkg={pkg} />}
+            />
+          ))}
 
-              <div className="flex gap-2 flex-wrap">
-                <label className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-bg-void/50 border border-gold/10 text-sm font-devanagari text-text-muted cursor-pointer hover:border-gold/30 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={form.isFeatured}
-                    onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })}
-                    className="accent-gold"
-                  />
-                  <Star size={14} /> featured (होमपेज पर दिखाएं)
-                </label>
-                <label className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-bg-void/50 border border-gold/10 text-sm font-devanagari text-text-muted cursor-pointer hover:border-gold/30 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={form.isActive}
-                    onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
-                    className="accent-gold"
-                  />
-                  <Eye size={14} /> active (सार्वजनिक रखें)
-                </label>
-                <label className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-bg-void/50 border border-gold/10 text-sm font-devanagari text-text-muted cursor-pointer hover:border-gold/30 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={form.customizable}
-                    onChange={(e) => setForm({ ...form, customizable: e.target.checked })}
-                    className="accent-gold"
-                  />
-                  ✨ कस्टमाइज़ेबल
-                </label>
-              </div>
+          {showDraft && (
+            <EditableCard
+              id={null}
+              isDraft
+              title="नया पैकेज"
+              imageUrl=""
+              imageAlt=""
+              fallbackIcon="Package"
+              fields={FIELDS}
+              values={DRAFT_VALUES}
+              isActive
+              isFeatured={false}
+              onSave={(values) => handleSave(null, values)}
+              onNotify={notify}
+              onDiscardDraft={() => setShowDraft(false)}
+              // No inclusions editor on a draft: package_items rows need a
+              // package_id, which does not exist until the first save.
+              preview={null}
+            />
+          )}
 
-              {form.id && (
-                <p className="text-xs text-text-muted font-devanagari">
-                  शामिल सेवाएं (bullets) सेव करने के बाद पैकेज कार्ड में &quot;सेवाएं&quot; खोलकर जोड़ें।
-                </p>
-              )}
-
-              <div className="flex gap-3 pt-2">
-                <Button
-                  variant="secondary"
-                  size="md"
-                  className="flex-1"
-                  onClick={() => setShowForm(false)}
-                >
-                  रद्द
-                </Button>
-                <Button
-                  variant="primary"
-                  size="md"
-                  className="flex-1"
-                  onClick={handleSave}
-                  disabled={isPending}
-                >
-                  <PackageIcon size={16} />
-                  {isPending ? 'सेव हो रहा है…' : form.id ? 'अपडेट करें' : 'पैकेज बनाएं'}
-                </Button>
-              </div>
-            </div>
-          </motion.div>
+          {!showDraft && supabaseReady && (
+            <AddCardTile label="+ नया पैकेज जोड़ें" onClick={() => setShowDraft(true)} />
+          )}
         </div>
       )}
 
-      {/* Delete confirm */}
       <ConfirmDialog
-        open={!!deleteTarget}
+        open={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}
-        onConfirm={handleDelete}
-        title="पैकेज हटाएं"
-        description={`क्या आप वाकई "${deleteTarget?.name}" को हटाना चाहते हैं? इसकी सभी शामिल सेवाएं भी हट जाएंगी और पैकेज सार्वजनिक पेज से गायब हो जाएगा।`}
-        confirmLabel="हटाएं"
+        onConfirm={() => void confirmDelete()}
+        loading={deleting}
+        title="पैकेज हटाएँ?"
+        description={
+          deleteTarget
+            ? `"${deleteTarget.name}" और इसकी ${deleteTarget.items.length} शामिल सेवाएँ हट जाएँगी। यह वापस नहीं आएगा।`
+            : ''
+        }
+        confirmLabel="हटा दें"
+        confirmVariant="danger"
       />
 
       <Toast
         open={toast.open}
-        onClose={() => setToast({ ...toast, open: false })}
+        onClose={() => setToast((t) => ({ ...t, open: false }))}
         type={toast.type}
         title={toast.title}
-        description={toast.description}
       />
-    </motion.div>
+    </div>
+  )
+}
+
+// ─── View-mode preview ────────────────────────────────────────────────────────
+
+function PackagePreview({ pkg }: { pkg: AdminPackage }) {
+  const setupTime = formatSetupTime(pkg.setupTimeMinutes)
+
+  return (
+    <div className="space-y-2">
+      <h3 className="font-devanagari text-base font-semibold leading-snug text-champagne">
+        {pkg.name}
+      </h3>
+
+      {pkg.description ? (
+        <p className="font-devanagari line-clamp-2 text-sm text-text-muted">{pkg.description}</p>
+      ) : (
+        <p className="font-devanagari text-sm italic text-text-muted/60">विवरण नहीं लिखा गया</p>
+      )}
+
+      <p className="font-devanagari text-sm font-bold text-gold-light">{priceLabel(pkg)}</p>
+
+      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-text-muted">
+        {setupTime && (
+          <span className="font-devanagari flex items-center gap-1">
+            <Clock size={11} aria-hidden />
+            {setupTime}
+          </span>
+        )}
+        {pkg.decorationArea && (
+          <span className="font-devanagari flex items-center gap-1">
+            <Maximize2 size={11} aria-hidden />
+            {pkg.decorationArea}
+          </span>
+        )}
+        <span className="font-devanagari flex items-center gap-1">
+          <PackageIcon size={11} aria-hidden />
+          {pkg.items.length} सेवाएँ
+        </span>
+      </div>
+
+      {/* §20: the public card shows this badge, so the preview must too —
+          otherwise the owner cannot see the effect of the toggle he just set. */}
+      {pkg.customizable && (
+        <span className="font-devanagari inline-block rounded-full border border-gold/30 bg-gold/10 px-2 py-0.5 text-[10px] text-gold-light">
+          मनपसंद बदलाव संभव
+        </span>
+      )}
+
+      {/* The first few inclusions, exactly as the public card lists them. */}
+      {pkg.items.length > 0 && (
+        <ul className="space-y-0.5 pt-1">
+          {pkg.items.slice(0, 3).map((item) => (
+            <li key={item.id} className="font-devanagari truncate text-xs text-text-muted">
+              <span className="text-gold-light">•</span> {item.label}
+            </li>
+          ))}
+          {pkg.items.length > 3 && (
+            <li className="font-devanagari text-xs text-text-muted/70">
+              +{pkg.items.length - 3} और
+            </li>
+          )}
+        </ul>
+      )}
+
+      {!pkg.imageUrl && (
+        <p className="flex items-center gap-1 text-[11px] text-text-muted/70">
+          <Sparkles size={11} aria-hidden />
+          फोटो नहीं है — आइकन दिख रहा है
+        </p>
+      )}
+    </div>
   )
 }

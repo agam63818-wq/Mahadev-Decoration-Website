@@ -4,6 +4,15 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSupabaseWriteClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/auth/session'
+import { CARD_IMAGES_BUCKET } from '@/lib/supabase/config'
+import {
+  buildCardImagePath,
+  isManagedBucketPath,
+  validateImageFile,
+} from '@/lib/admin/media'
+import type { Database } from '@/lib/supabase/database.types'
+
+type PackageUpdate = Database['public']['Tables']['packages']['Update']
 
 // ─── Packages admin actions ───────────────────────────────────────────────────
 // Every action re-checks the caller's admin role on the server. The middleware
@@ -140,9 +149,19 @@ export async function savePackage(input: unknown): Promise<ActionResult> {
     .maybeSingle()
   if (existing) slug = `${slug}-${Date.now().toString(36)}`
 
+  // New packages go to the END of the grid (migration 0010 added sort_order),
+  // so creating one never reshuffles the cards the owner already arranged.
+  const { data: lastRow } = await supabase
+    .from('packages')
+    .select('sort_order')
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const nextSort = ((lastRow as { sort_order?: number } | null)?.sort_order ?? 0) + 1
+
   const { data, error } = await supabase
     .from('packages')
-    .insert({ ...row, slug })
+    .insert({ ...row, slug, sort_order: nextSort })
     .select('id, slug')
     .single()
 
@@ -155,12 +174,28 @@ export async function deletePackage(id: string): Promise<ActionResult> {
   const { error: authError, supabase } = await requireAdminClient()
   if (authError || !supabase) return { ok: false, error: authError ?? 'Unavailable' }
 
+  // Read the artwork path BEFORE the row disappears — afterwards there is no
+  // way to discover which storage object belonged to it.
+  const { data: existingRow } = await supabase
+    .from('packages')
+    .select('image_url')
+    .eq('id', id)
+    .maybeSingle()
+
   // package_items has a FK to packages; delete bullets first in case the FK
   // isn't ON DELETE CASCADE in the live database.
   await supabase.from('package_items').delete().eq('package_id', id)
 
   const { error } = await supabase.from('packages').delete().eq('id', id)
   if (error) return { ok: false, error: error.message }
+
+  // Best-effort, and deliberately AFTER the row delete: a failed cleanup only
+  // leaves a harmless orphan object, whereas removing the object first and
+  // then failing the row delete would leave a visibly broken card.
+  const prevImage = (existingRow as { image_url: string | null } | null)?.image_url
+  if (prevImage && isManagedBucketPath(prevImage)) {
+    await supabase.storage.from(CARD_IMAGES_BUCKET).remove([prevImage])
+  }
 
   revalidatePublicPackages()
   return { ok: true }
@@ -242,4 +277,127 @@ export async function reorderPackageItems(orderedIds: string[]): Promise<ActionR
 
   revalidatePublicPackages()
   return { ok: true }
+}
+
+// ─── Flags, ordering and artwork (PART 2 §12) ─────────────────────────────────
+
+const packageFlagsSchema = z.object({
+  id: z.string().uuid(),
+  isActive: z.boolean().optional(),
+  isFeatured: z.boolean().optional(),
+})
+
+/**
+ * Flip only `is_active` / `is_featured`.
+ *
+ * Kept separate from `savePackage` on purpose: routing a toggle through the
+ * full save would rewrite name, description and every price with whatever the
+ * card happened to be holding in memory, so a stale card could silently revert
+ * a text edit made in another tab.
+ */
+export async function setPackageFlags(input: unknown): Promise<ActionResult> {
+  const parsed = packageFlagsSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: 'अमान्य जानकारी' }
+
+  const { error: authError, supabase } = await requireAdminClient()
+  if (authError || !supabase) return { ok: false, error: authError ?? 'Unavailable' }
+
+  // Typed as the table's Update shape, not Record<string, unknown>: PostgREST
+  // silently ignores unknown keys, so an untyped patch would let a typo become
+  // a save that "succeeds" while changing nothing.
+  const patch: PackageUpdate = { updated_at: new Date().toISOString() }
+  if (parsed.data.isActive !== undefined) patch.is_active = parsed.data.isActive
+  if (parsed.data.isFeatured !== undefined) patch.is_featured = parsed.data.isFeatured
+
+  const { error } = await supabase.from('packages').update(patch).eq('id', parsed.data.id)
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePublicPackages()
+  return { ok: true, id: parsed.data.id }
+}
+
+/** Persist the whole package order (↑ ↓ controls) — migration 0010 column. */
+export async function reorderPackages(orderedIds: string[]): Promise<ActionResult> {
+  const { error: authError, supabase } = await requireAdminClient()
+  if (authError || !supabase) return { ok: false, error: authError ?? 'Unavailable' }
+
+  if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+    return { ok: false, error: 'क्रम की जानकारी नहीं मिली' }
+  }
+
+  // The complete list is rewritten each time, so the stored order is exactly
+  // the caller's array regardless of the previous sort_order values (which may
+  // have gaps after deletes).
+  for (let i = 0; i < orderedIds.length; i += 1) {
+    const { error } = await supabase
+      .from('packages')
+      .update({ sort_order: i })
+      .eq('id', orderedIds[i])
+    if (error) return { ok: false, error: error.message }
+  }
+
+  revalidatePublicPackages()
+  return { ok: true }
+}
+
+/**
+ * Replace a package card photo — identical safety ordering to
+ * `uploadServiceImage`:
+ *   validate → server-generated path → upload(upsert:false) → read previous
+ *   → update row → on row failure delete the NEW object → only then delete the
+ *   previous object, and only when it is one of ours.
+ */
+export async function uploadPackageImage(formData: FormData): Promise<ActionResult> {
+  const id = String(formData.get('id') ?? '')
+  const file = formData.get('file')
+
+  if (!id) return { ok: false, error: 'कौन सा पैकेज? id नहीं मिली।' }
+
+  // Re-run the same validation the browser ran. The browser check is UI only.
+  const check = validateImageFile(file)
+  if (!check.ok) return { ok: false, error: check.error }
+
+  const { error: authError, supabase } = await requireAdminClient()
+  if (authError || !supabase) return { ok: false, error: authError ?? 'Unavailable' }
+
+  let objectPath: string
+  try {
+    objectPath = buildCardImagePath('packages', id, check.ext)
+  } catch {
+    return { ok: false, error: 'अमान्य id' }
+  }
+
+  const upload = await supabase.storage
+    .from(CARD_IMAGES_BUCKET)
+    .upload(objectPath, file as File, { contentType: check.mime, upsert: false })
+
+  if (upload.error) {
+    // The row was never touched, so the old photo is still live and correct.
+    return { ok: false, error: 'इमेज अपलोड नहीं हो सकी।' }
+  }
+
+  const { data: prev } = await supabase
+    .from('packages')
+    .select('image_url, slug')
+    .eq('id', id)
+    .maybeSingle()
+  const prevRow = prev as { image_url: string | null; slug: string } | null
+
+  const { error: updateError } = await supabase
+    .from('packages')
+    .update({ image_url: objectPath, updated_at: new Date().toISOString() })
+    .eq('id', id)
+
+  if (updateError) {
+    // Roll the storage side back so a failed save leaves no orphan object.
+    await supabase.storage.from(CARD_IMAGES_BUCKET).remove([objectPath])
+    return { ok: false, error: 'फोटो सेव नहीं हो सकी। फिर कोशिश करें।' }
+  }
+
+  if (prevRow?.image_url && isManagedBucketPath(prevRow.image_url)) {
+    await supabase.storage.from(CARD_IMAGES_BUCKET).remove([prevRow.image_url])
+  }
+
+  revalidatePublicPackages(prevRow?.slug)
+  return { ok: true, id }
 }

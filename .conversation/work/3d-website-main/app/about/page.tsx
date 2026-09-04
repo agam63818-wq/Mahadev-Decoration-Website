@@ -13,8 +13,12 @@ export const metadata: Metadata = {
   },
 }
 
+// Team members are admin-editable in the database, so this page must not be
+// statically cached or the owner's edits would never appear.
+export const dynamic = 'force-dynamic'
+
 export default async function AboutPage() {
-  const [teamMembers, stats, business] = await Promise.all([
+  const [teamResult, stats, business] = await Promise.all([
     getTeamMembers(),
     getStatsBar(),
     getBusinessSettings(),
@@ -35,7 +39,14 @@ export default async function AboutPage() {
         </div>
       </div>
 
-      <AboutClient teamMembers={teamMembers} stats={stats} business={business} />
+      {/* teamError tells AboutClient to render a retryable error state for the
+          team section instead of silently showing the old static array. */}
+      <AboutClient
+        teamMembers={teamResult.ok ? teamResult.data : []}
+        teamError={!teamResult.ok}
+        stats={stats}
+        business={business}
+      />
     </div>
   )
 }

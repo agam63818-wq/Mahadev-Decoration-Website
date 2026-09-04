@@ -6,6 +6,7 @@ import { getPackageBySlug } from '@/services/packages'
 import { buildBookingUrl, buildWhatsAppUrl, formatPrice } from '@/utils/booking'
 import { getBusinessSettings } from '@/services/business'
 import { SectionFlourish } from '@/components/ui/SectionFlourish'
+import { RetryableErrorState } from '@/components/ui/RetryableErrorState'
 
 interface Props {
   params: { slug: string }
@@ -17,7 +18,11 @@ interface Props {
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const pkg = await getPackageBySlug(params.slug)
+  const result = await getPackageBySlug(params.slug)
+  // A failed query is NOT a 404 — don't emit "Not Found" metadata for a page
+  // that is about to render a retryable error state.
+  if (!result.ok) return { title: 'पैकेज | महादेव डेकोरेशन' }
+  const pkg = result.data
   if (!pkg) return { title: 'Not Found' }
 
   return {
@@ -31,7 +36,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PackageDetailPage({ params }: Props) {
-  const pkg = await getPackageBySlug(params.slug)
+  const result = await getPackageBySlug(params.slug)
+
+  // Distinguish "database unreachable" from "this package does not exist".
+  // The old seed fallback conflated the two and could show a stale static
+  // package for a slug the owner had already deleted.
+  if (!result.ok) {
+    return (
+      <div className="min-h-screen bg-bg-void pt-20">
+        <RetryableErrorState />
+      </div>
+    )
+  }
+
+  const pkg = result.data
   if (!pkg) notFound()
 
   const bookingUrl = buildBookingUrl({

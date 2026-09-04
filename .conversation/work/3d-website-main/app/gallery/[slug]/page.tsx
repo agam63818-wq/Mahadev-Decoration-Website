@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react'
 import { getPortfolioItemById } from '@/services/portfolio'
 import { buildBookingUrl } from '@/utils/booking'
 import { GalleryDetailClient } from '@/features/gallery/GalleryDetailClient'
+import { RetryableErrorState } from '@/components/ui/RetryableErrorState'
 
 // The live portfolio_items table has no slug column — the route param is the
 // row `id`. force-dynamic so admin edits appear immediately (no stale SSG).
@@ -15,7 +16,10 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const item = await getPortfolioItemById(params.slug)
+  const result = await getPortfolioItemById(params.slug)
+  // A failed query is not a 404 — see the page component below.
+  if (!result.ok) return { title: 'गैलरी | महादेव डेकोरेशन' }
+  const item = result.data
   if (!item) return { title: 'Not Found' }
 
   return {
@@ -30,7 +34,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function GalleryDetailPage({ params }: Props) {
-  const item = await getPortfolioItemById(params.slug)
+  const result = await getPortfolioItemById(params.slug)
+
+  // "Database unreachable" must not be reported to the visitor as "this design
+  // does not exist" — show a retryable error instead of a misleading 404.
+  if (!result.ok) {
+    return (
+      <div className="min-h-screen bg-bg-void pt-20">
+        <RetryableErrorState />
+      </div>
+    )
+  }
+
+  const item = result.data
   if (!item) notFound()
 
   const bookingUrl = buildBookingUrl({

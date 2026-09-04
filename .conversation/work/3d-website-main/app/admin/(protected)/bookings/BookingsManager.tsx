@@ -1,14 +1,16 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Search, Phone, ExternalLink, Eye, ImageOff } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import { Search, Phone, ExternalLink, Eye, ImageOff, AlertTriangle } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { RetryableErrorState } from '@/components/ui/RetryableErrorState'
 import { formatPrice } from '@/utils/booking'
 import type { AdminBookingRequest, SelectedLook } from '@/services/bookings'
 
@@ -93,7 +95,30 @@ function SelectedLookBlock({ look, compact = false }: { look: SelectedLook | nul
               </span>
             )}
           </div>
-          {look.portfolioItemSlug && (
+
+          {/*
+            §5: be explicit about WHICH price this is. A booking made before
+            migration 0011 has no frozen price, so the figure above is today's
+            catalog price — presenting that as the agreed amount could cause a
+            real dispute with a customer.
+          */}
+          {look.price != null && !look.priceIsHistorical && (
+            <p className="font-devanagari mt-2 text-[11px] leading-snug text-text-muted">
+              ⚠️ यह अब्य की कैटलॉग कीमत है — यह बुकिंग पुरानी है, इसलिए बुकिंग के समय
+              की कीमत रिकॉर्ड नहीं हुई थी।
+            </p>
+          )}
+
+          {/* §11: the design was deleted from the catalog. Show the frozen
+              record, but don't offer a link that would 404. */}
+          {look.catalogRowMissing && (
+            <p className="font-devanagari mt-2 text-[11px] leading-snug text-text-muted">
+              इस डिज़ाइन को गैलरी से हटा दिया गया है — ऊपर की जानकारी बुकिंग के समय का
+              रिकॉर्ड है।
+            </p>
+          )}
+
+          {look.portfolioItemSlug && !look.catalogRowMissing && (
             <Link
               href={`/gallery/${look.portfolioItemSlug}`}
               target="_blank"
@@ -118,10 +143,52 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-export function BookingsManager({ bookings }: { bookings: AdminBookingRequest[] }) {
+export function BookingsManager({
+  bookings,
+  loadFailed = false,
+}: {
+  bookings: AdminBookingRequest[]
+  /** §24: the query failed — never render that as "no bookings". */
+  loadFailed?: boolean
+}) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selected, setSelected] = useState<AdminBookingRequest | null>(null)
+
+  /*
+   * §11 — deep link from the notification bell: /admin/bookings?ref=<id>.
+   *
+   * The bell cannot link to a per-booking route because none exists (this page
+   * is a list + modal), so it passes the booking_request id here and we open
+   * the matching row. If the row is gone — deleted, or filtered out by RLS —
+   * we must NOT silently do nothing and we must NOT invent a placeholder
+   * booking: we show an honest "this booking is no longer available" notice.
+   */
+  const searchParams = useSearchParams()
+  const refParam = searchParams.get('ref')
+  const [refMissing, setRefMissing] = useState(false)
+  // Only auto-open once per ref value, otherwise closing the modal would
+  // immediately re-open it on the next render.
+  const handledRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!refParam) {
+      handledRef.current = null
+      setRefMissing(false)
+      return
+    }
+    if (handledRef.current === refParam) return
+    handledRef.current = refParam
+
+    const match = bookings.find((b) => b.id === refParam)
+    if (match) {
+      setRefMissing(false)
+      setSelected(match)
+    } else {
+      // Do not claim it was deleted — we only know it is not in this list.
+      setRefMissing(true)
+    }
+  }, [refParam, bookings])
 
   const filterOptions = useMemo(() => {
     const present = Array.from(new Set(bookings.map((b) => b.status)))
@@ -177,7 +244,32 @@ export function BookingsManager({ bookings }: { bookings: AdminBookingRequest[] 
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {/* §11: the notification pointed at a booking that is not in this list. */}
+      {refMissing && !loadFailed && (
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-gold/25 bg-gold/5 p-4">
+          <AlertTriangle size={18} className="mt-0.5 flex-shrink-0 text-gold" />
+          <div className="min-w-0">
+            <p className="font-devanagari text-sm text-text-primary">
+              यह बुकिंग अब उपलब्ध नहीं है
+            </p>
+            <p className="font-devanagari text-xs text-text-muted">
+              नोटिफिकेशन जिस रिक्वेस्ट की ओर इशारा कर रहा था वह इस सूची में नहीं मिली — शायद हटा दी गई है।
+              नीचे बाकी सभी रिक्वेस्ट दिख रही हैं।
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/*
+        §24: error outranks empty. "कोई बुकिंग रिक्वेस्ट नहीं" after a failed
+        query would tell the owner his enquiries had vanished.
+      */}
+      {loadFailed ? (
+        <RetryableErrorState
+          title="बुकिंग लोड नहीं हो सकीं"
+          description="इंटरनेट या सर्वर की समस्या हो सकती है। यह खाली सूची नहीं है — फिर कोशिश करें।"
+        />
+      ) : filtered.length === 0 ? (
         <EmptyState
           title="कोई बुकिंग रिक्वेस्ट नहीं"
           description="जब ग्राहक वेबसाइट से बुकिंग भेजेंगे, वे यहाँ दिखेंगी।"

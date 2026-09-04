@@ -1,8 +1,14 @@
 import type { EventType, PortfolioItem, PortfolioImage } from '@/types'
-import { portfolioItems as seedPortfolioItems } from '@/lib/data'
 import { getSupabaseReadClient } from '@/lib/supabase/server'
 import { portfolioPublicUrl } from '@/lib/supabase/config'
 import type { PortfolioItemRow, PortfolioMediaRow } from '@/lib/supabase/database.types'
+import {
+  dataError,
+  dataOk,
+  logQueryFailure,
+  SUPABASE_UNCONFIGURED,
+  type DataResult,
+} from './result'
 
 // ─── Portfolio Service ─────────────────────────────────────────────────────────
 // Reads live data from Supabase (portfolio_items + portfolio_media) so that an
@@ -16,9 +22,12 @@ import type { PortfolioItemRow, PortfolioMediaRow } from '@/lib/supabase/databas
 //   lowest sort_order. It also has no width/height columns, so sensible
 //   defaults are used for layout.
 //
-// If Supabase isn't configured, or a query fails, every function falls back to
-// the static seed data in lib/data/ so the site still renders. Components keep
-// calling these functions and never touch Supabase directly.
+// NO STATIC RUNTIME FALLBACK (§2). The previous version returned the
+// `seedPortfolioItems` array whenever the query failed or the table was empty,
+// so a broken gallery was indistinguishable from a working one and an admin who
+// unpublished everything still saw stock examples on the public site. Failures
+// are now returned explicitly and the gallery renders an error state.
+// Components keep calling these functions and never touch Supabase directly.
 
 // Pages that use these must not be cached indefinitely, otherwise "changes
 // appear immediately" would not hold. Callers set `revalidate`; this is the
@@ -114,9 +123,12 @@ async function fetchItems(options: {
   categoryId?: string
   eventType?: EventType
   featuredOnly?: boolean
-}): Promise<PortfolioItem[] | null> {
+}): Promise<DataResult<PortfolioItem[]>> {
   const supabase = getSupabaseReadClient()
-  if (!supabase) return null
+  if (!supabase) {
+    logQueryFailure('portfolio', SUPABASE_UNCONFIGURED)
+    return dataError(SUPABASE_UNCONFIGURED)
+  }
 
   let query = supabase
     .from('portfolio_items')
@@ -131,56 +143,53 @@ async function fetchItems(options: {
 
   const { data, error } = await query.order('created_at', { ascending: false })
 
-  if (error || !data) {
-    if (error) console.error('[portfolio] query failed, using seed data:', error.message)
-    return null
+  if (error) {
+    logQueryFailure('portfolio', error.message)
+    return dataError(error.message)
   }
 
-  return (data as unknown as ItemWithMedia[]).map(mapItem)
+  // Zero rows is a legitimate result and is reported as SUCCESS — the gallery
+  // then shows its empty state rather than stock examples.
+  return dataOk((data as unknown as ItemWithMedia[] | null)?.map(mapItem) ?? [])
 }
 
-export async function getAllPortfolioItems(): Promise<PortfolioItem[]> {
-  const live = await fetchItems({})
-  // An empty live table is a legitimate state (admin hasn't added anything yet),
-  // but showing an empty gallery is worse than showing the seed examples.
-  if (live && live.length > 0) return live
-  return seedPortfolioItems
+/** Every public gallery item, newest first. */
+export async function getAllPortfolioItems(): Promise<DataResult<PortfolioItem[]>> {
+  return fetchItems({})
 }
 
-export async function getFeaturedPortfolioItems(): Promise<PortfolioItem[]> {
-  const live = await fetchItems({ featuredOnly: true })
-  if (live && live.length > 0) return live
-  return seedPortfolioItems.filter((item) => item.featured)
+/** Public + featured gallery items — the home page featured strip. */
+export async function getFeaturedPortfolioItems(): Promise<DataResult<PortfolioItem[]>> {
+  return fetchItems({ featuredOnly: true })
 }
 
+/** Public gallery items for one event type. */
 export async function getPortfolioItemsByEventType(
   eventType: EventType,
-): Promise<PortfolioItem[]> {
-  const live = await fetchItems({ eventType })
-  if (live && live.length > 0) return live
-  return seedPortfolioItems.filter((item) => item.eventType === eventType)
+): Promise<DataResult<PortfolioItem[]>> {
+  return fetchItems({ eventType })
 }
 
 /**
  * Look up one item by its identifier. The live table has no slug column, so
- * the route param is the row `id`; this accepts either a raw id or a legacy
- * seed slug (for the static fallback data).
+ * the route param IS the row `id`.
+ *
+ * `data: null` means genuinely not found (the caller should 404) and is now
+ * distinguishable from a query failure, which returns `ok: false`.
  */
-export async function getPortfolioItemById(idOrSlug: string): Promise<PortfolioItem | null> {
-  // Only query the DB when the value looks like a UUID, otherwise PostgREST
-  // would reject the id filter before we even get a chance to fall back.
+export async function getPortfolioItemById(
+  idOrSlug: string,
+): Promise<DataResult<PortfolioItem | null>> {
+  // Only query when the value looks like a UUID: PostgREST rejects a malformed
+  // uuid filter with a 400, which would surface as a misleading error state.
   const looksLikeId =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug)
 
-  if (looksLikeId) {
-    const live = await fetchItems({ id: idOrSlug })
-    if (live && live.length > 0) return live[0]
-  }
-  return (
-    seedPortfolioItems.find(
-      (item) => item.slug === idOrSlug || item.id === idOrSlug,
-    ) ?? null
-  )
+  if (!looksLikeId) return dataOk(null)
+
+  const result = await fetchItems({ id: idOrSlug })
+  if (!result.ok) return result
+  return dataOk(result.data[0] ?? null)
 }
 
 // ─── Portfolio categories (public gallery filter pills) ──────────────────────
