@@ -1,7 +1,14 @@
 import type { Package, EventType } from '@/types'
-import { packages as seedPackages } from '@/lib/data'
 import { getSupabaseReadClient } from '@/lib/supabase/server'
+import { cardImagePublicUrl } from '@/lib/supabase/config'
 import type { PackageRow, PackageItemRow } from '@/lib/supabase/database.types'
+import {
+  dataError,
+  dataOk,
+  logQueryFailure,
+  SUPABASE_UNCONFIGURED,
+  type DataResult,
+} from './result'
 
 // ─── Packages Service ─────────────────────────────────────────────────────────
 // Reads live data from Supabase (packages + package_items) so that an admin
@@ -21,11 +28,17 @@ import type { PackageRow, PackageItemRow } from '@/lib/supabase/database.types'
 // - priceRange    ← derived from starting_price / price_max
 // - estimatedSetupTime ← setup_time_minutes formatted as "N घंटे" / "N दिन"
 //
-// If Supabase isn't configured, or a query fails, every function falls back to
-// the static seed data in lib/data/ so the site still renders.
+// NO STATIC RUNTIME FALLBACK (§2/§14). The previous version returned the
+// `seedPackages` array from lib/data/ whenever the query failed OR the table
+// came back empty, which meant:
+//   * a broken database looked identical to a healthy one, and
+//   * an admin who deliberately deactivated every package still saw six of
+//     them on the public site, with prices they had not set.
+// Packages are imported into the database from /admin/content, so a failure is
+// now returned as an explicit error and the page renders an error state.
 
 const PACKAGE_COLUMNS =
-  'id, slug, name, description, starting_price, price_max, setup_time_minutes, decoration_area, customizable, is_featured, is_active, created_at'
+  'id, slug, name, description, starting_price, price_max, setup_time_minutes, decoration_area, customizable, is_featured, is_active, image_url, image_alt, sort_order, created_at'
 
 const ITEM_COLUMNS = 'id, package_id, label, sort_order'
 
@@ -43,6 +56,9 @@ type PackageWithItems = Pick<
   | 'customizable'
   | 'is_featured'
   | 'is_active'
+  | 'image_url'
+  | 'image_alt'
+  | 'sort_order'
 > & {
   package_items: Array<Pick<PackageItemRow, 'id' | 'package_id' | 'label' | 'sort_order'>> | null
 }
@@ -97,10 +113,11 @@ function mapPackage(row: PackageWithItems): Package {
     estimatedSetupTime: formatSetupTime(row.setup_time_minutes),
     decorationArea: row.decoration_area ?? '',
     customizationAvailable: Boolean(row.customizable),
-    // No image column in the live schema — the detail page already renders a
-    // gradient placeholder, and cards don't use an image.
-    imageUrl: '',
-    imageAlt: row.name,
+    // Migration 0010 added image_url/image_alt so the owner can put a real
+    // photo on a package card from /admin/packages. Empty string still means
+    // "no photo", and the existing gradient placeholder handles that case.
+    imageUrl: cardImagePublicUrl(row.image_url ?? ''),
+    imageAlt: row.image_alt || row.name,
     featured: Boolean(row.is_featured),
     popular: false,
     faq: [],
@@ -114,9 +131,12 @@ async function fetchPackages(options: {
   featuredOnly?: boolean
   /** Admin lists want inactive rows too; public pages pass false. */
   activeOnly?: boolean
-}): Promise<Package[] | null> {
+}): Promise<DataResult<Package[]>> {
   const supabase = getSupabaseReadClient()
-  if (!supabase) return null
+  if (!supabase) {
+    logQueryFailure('packages', SUPABASE_UNCONFIGURED)
+    return dataError(SUPABASE_UNCONFIGURED)
+  }
 
   let query = supabase
     .from('packages')
@@ -126,45 +146,56 @@ async function fetchPackages(options: {
   if (options.slug) query = query.eq('slug', options.slug)
   if (options.featuredOnly) query = query.eq('is_featured', true)
 
-  const { data, error } = await query.order('starting_price', { ascending: true })
+  // sort_order (migration 0010) is the order the owner arranged in the admin.
+  // starting_price is kept as the tie-breaker so packages that share a rung
+  // still come out cheapest-first, which is what the page previously did.
+  const { data, error } = await query
+    .order('sort_order', { ascending: true })
+    .order('starting_price', { ascending: true })
 
-  if (error || !data) {
-    if (error) console.error('[packages] query failed, using seed data:', error.message)
-    return null
+  if (error) {
+    logQueryFailure('packages', error.message)
+    return dataError(error.message)
   }
 
-  return (data as unknown as PackageWithItems[]).map(mapPackage)
+  // Zero rows is a legitimate result and is reported as SUCCESS — the page
+  // then shows its empty state rather than six packages nobody configured.
+  return dataOk((data as unknown as PackageWithItems[] | null)?.map(mapPackage) ?? [])
 }
 
-export async function getAllPackages(): Promise<Package[]> {
-  const live = await fetchPackages({ activeOnly: true })
-  // An empty live table is a legitimate state (admin hasn't added anything
-  // yet), but showing an empty packages page is worse than showing examples.
-  if (live && live.length > 0) return live
-  return seedPackages
+/** All active packages in the order the owner arranged them. */
+export async function getAllPackages(): Promise<DataResult<Package[]>> {
+  return fetchPackages({ activeOnly: true })
 }
 
-export async function getFeaturedPackages(): Promise<Package[]> {
-  const live = await fetchPackages({ activeOnly: true, featuredOnly: true })
-  if (live && live.length > 0) return live
-  return seedPackages.filter((pkg) => pkg.featured)
-}
-
-export async function getPackagesByEventType(eventType: EventType): Promise<Package[]> {
-  // The live table has no event_type column, so live packages can't be
-  // filtered by event type — return the full active list instead. The seed
-  // fallback can still honour the filter for its own static data.
-  const live = await fetchPackages({ activeOnly: true })
-  if (live && live.length > 0) return live
-  return seedPackages.filter((pkg) => pkg.eventType === eventType)
+/** Active + featured packages — the home page packages section. */
+export async function getFeaturedPackages(): Promise<DataResult<Package[]>> {
+  return fetchPackages({ activeOnly: true, featuredOnly: true })
 }
 
 /**
- * Look up one package by slug. The live packages table HAS a slug column, so
- * the signature and behaviour stay exactly the same as the static version.
+ * The live packages table has NO event_type column (verified against the live
+ * PostgREST spec), so packages genuinely cannot be filtered by event type.
+ * Returning the full active list is the honest behaviour; the caller labels it
+ * as "all packages" rather than pretending the filter applied.
  */
-export async function getPackageBySlug(slug: string): Promise<Package | null> {
-  const live = await fetchPackages({ slug, activeOnly: true })
-  if (live && live.length > 0) return live[0]
-  return seedPackages.find((pkg) => pkg.slug === slug) ?? null
+export async function getPackagesByEventType(
+  _eventType: EventType,
+): Promise<DataResult<Package[]>> {
+  return fetchPackages({ activeOnly: true })
+}
+
+/**
+ * Look up one active package by slug. `data: null` means genuinely not found
+ * (the caller should 404), which is now distinguishable from a query failure.
+ */
+export async function getPackageBySlug(slug: string): Promise<DataResult<Package | null>> {
+  const result = await fetchPackages({ slug, activeOnly: true })
+  if (!result.ok) return result
+  return dataOk(result.data[0] ?? null)
+}
+
+/** Every package including inactive ones — admin screens only. */
+export async function getPackagesForAdmin(): Promise<DataResult<Package[]>> {
+  return fetchPackages({ activeOnly: false })
 }

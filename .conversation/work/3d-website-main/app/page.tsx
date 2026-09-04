@@ -27,19 +27,39 @@ export const metadata: Metadata = {
   },
 }
 
+// The home page shows admin-managed occasions, gallery, packages and reviews,
+// so it must render per-request rather than being cached at build time.
+export const dynamic = 'force-dynamic'
+
 export default async function HomePage() {
-  // All data fetched server-side — Part 2 will swap these for Supabase queries
-  const [occasions, portfolioItems, packages, reviews, processSteps, whyChooseFeatures, serviceAreas, business] =
-    await Promise.all([
-      getOccasions(),
-      getFeaturedPortfolioItems(),
-      getFeaturedPackages(),
-      getFeaturedReviews(),
-      getProcessSteps(),
-      getWhyChooseFeatures(),
-      getServiceAreas(),
-      getBusinessSettings(),
-    ])
+  // Every business-record query now returns DataResult. A section whose query
+  // FAILED is hidden rather than being filled with static sample content — the
+  // relevant page (/gallery, /packages, /reviews) shows the real error state
+  // with a Retry, so the failure is visible without wrecking the home page.
+  const [
+    occasionsResult,
+    portfolioResult,
+    packagesResult,
+    reviewsResult,
+    processSteps,
+    whyChooseFeatures,
+    serviceAreas,
+    business,
+  ] = await Promise.all([
+    getOccasions(),
+    getFeaturedPortfolioItems(),
+    getFeaturedPackages(),
+    getFeaturedReviews(),
+    getProcessSteps(),
+    getWhyChooseFeatures(),
+    getServiceAreas(),
+    getBusinessSettings(),
+  ])
+
+  const occasions = occasionsResult.ok ? occasionsResult.data : []
+  const portfolioItems = portfolioResult.ok ? portfolioResult.data : []
+  const packages = packagesResult.ok ? packagesResult.data : []
+  const reviews = reviewsResult.ok ? reviewsResult.data : []
 
   return (
     <>
@@ -51,23 +71,24 @@ export default async function HomePage() {
       {/* Section 2: Trust Strip */}
       <TrustStrip />
 
-      {/* Section 3: Occasions */}
-      <OccasionsSection occasions={occasions} />
+      {/* Section 3: Occasions — hidden entirely when there is no data, so the
+          page never renders a heading above an empty grid. */}
+      {occasions.length > 0 && <OccasionsSection occasions={occasions} />}
 
       {/* Section 4: Featured Gallery */}
-      <FeaturedGallerySection items={portfolioItems} />
+      {portfolioItems.length > 0 && <FeaturedGallerySection items={portfolioItems} />}
 
-      {/* Section 5: How It Works */}
+      {/* Section 5: How It Works — static brand copy, always available */}
       <ProcessSection steps={processSteps} />
 
       {/* Section 6: Featured Packages */}
-      <PackagesSection packages={packages} />
+      {packages.length > 0 && <PackagesSection packages={packages} />}
 
-      {/* Section 7: Why Choose Us */}
+      {/* Section 7: Why Choose Us — static brand copy, always available */}
       <WhyChooseSection features={whyChooseFeatures} />
 
       {/* Section 8: Reviews */}
-      <ReviewsSection reviews={reviews} />
+      {reviews.length > 0 && <ReviewsSection reviews={reviews} />}
 
       {/* Section 9: Service Area */}
       <ServiceAreaSection areas={serviceAreas} business={business} />

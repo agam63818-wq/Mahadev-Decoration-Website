@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { LogOut, Loader2, Menu, ExternalLink } from 'lucide-react'
 import { AdminSidebar } from '@/components/layout/AdminSidebar'
+import { NotificationBell } from '@/components/admin/NotificationBell'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import type { UserRole } from '@/lib/auth/roles'
 
@@ -105,6 +106,13 @@ export function AdminShell({
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              {/*
+               * PART 3 §9/§25 — the bell lives in the shared shell so it is
+               * reachable from every admin route on both phone and desktop.
+               * It renders its own relative wrapper; the panel is `fixed` on
+               * small screens so it can never overflow the header.
+               */}
+              <NotificationBell />
               <Link
                 href="/"
                 target="_blank"

@@ -9,7 +9,6 @@ import {
   Check,
   Eye,
   EyeOff,
-  GripVertical,
   Loader2,
   Pencil,
   Plus,
@@ -20,6 +19,11 @@ import {
   X,
 } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { RetryableErrorState } from '@/components/ui/RetryableErrorState'
+import { IMAGE_ACCEPT_ATTR, MAX_IMAGE_LABEL, validateImageFile } from '@/lib/admin/media'
+import { ADMIN_MSG } from '@/lib/admin/messages'
+import { ReorderControls } from '../services/ServicesManager'
 import {
   savePortfolioItem,
   deletePortfolioItem,
@@ -72,6 +76,8 @@ export interface AdminPortfolioCategory {
 interface PortfolioManagerProps {
   initialItems: AdminPortfolioItem[]
   initialCategories: AdminPortfolioCategory[]
+  /** §17: true when the query itself failed — distinct from "no designs yet". */
+  loadFailed?: boolean
   supabaseReady: boolean
 }
 
@@ -122,6 +128,7 @@ const emptyForm = {
 export function PortfolioManager({
   initialItems,
   initialCategories,
+  loadFailed = false,
   supabaseReady,
 }: PortfolioManagerProps) {
   const router = useRouter()
@@ -131,6 +138,8 @@ export function PortfolioManager({
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
+  const [deleteItemTarget, setDeleteItemTarget] = useState<AdminPortfolioItem | null>(null)
+  const [deletingItem, setDeletingItem] = useState(false)
 
   const items = initialItems
   const categories = initialCategories
@@ -193,15 +202,21 @@ export function PortfolioManager({
     refresh()
   }
 
-  async function handleDeleteItem(item: AdminPortfolioItem) {
-    if (
-      !window.confirm(
-        `"${item.title}" और इसकी सभी तस्वीरें हमेशा के लिए हट जाएँगी। जारी रखें?`,
-      )
-    )
-      return
+  /**
+   * §8: destructive actions go through the shared ConfirmDialog, not
+   * window.confirm — the native dialog cannot be styled, is not translated
+   * consistently across Android browsers, and blocks the entire tab.
+   */
+  async function handleDeleteItem() {
+    const item = deleteItemTarget
+    if (!item) return
+
+    setDeletingItem(true)
     const result = await deletePortfolioItem(item.id)
+    setDeletingItem(false)
+
     if (!result.ok) return notify('err', result.error ?? 'डिलीट नहीं हुआ')
+    setDeleteItemTarget(null)
     notify('ok', 'डिज़ाइन हटा दिया गया')
     refresh()
   }
@@ -398,8 +413,19 @@ export function PortfolioManager({
         </form>
       )}
 
+      {/*
+        §17: error and empty are separate branches. If the query failed we must
+        never claim the gallery is empty — that reads as data loss.
+      */}
+      {loadFailed && (
+        <RetryableErrorState
+          title="पोर्टफोलियो लोड नहीं हो सका"
+          description="इंटरनेट या सर्वर की समस्या हो सकती है। फिर कोशिश करें।"
+        />
+      )}
+
       {/* Empty state */}
-      {items.length === 0 && !showForm && (
+      {!loadFailed && items.length === 0 && !showForm && (
         <div className="rounded-2xl border border-dashed border-gold/25 bg-bg-purple/20 p-10 text-center">
           <p className="font-devanagari text-text-primary">अभी कोई डिज़ाइन नहीं जोड़ा गया।</p>
           <p className="font-devanagari mt-1 text-sm text-text-muted">
@@ -416,12 +442,28 @@ export function PortfolioManager({
             item={item}
             categoryName={categories.find((c) => c.id === item.categoryId)?.name ?? ''}
             onEdit={() => openEdit(item)}
-            onDelete={() => handleDeleteItem(item)}
+            onDelete={() => setDeleteItemTarget(item)}
             onChanged={refresh}
             notify={notify}
           />
         ))}
       </div>
+
+      {/*
+        §8: the confirm step lives here, not inside ItemCard, so the dialog is a
+        single element at the page level. Rendering one per card would stack
+        dozens of hidden dialogs and the backdrop of a nested one can end up
+        behind its own card on mobile.
+      */}
+      <ConfirmDialog
+        open={Boolean(deleteItemTarget)}
+        onClose={() => setDeleteItemTarget(null)}
+        onConfirm={() => void handleDeleteItem()}
+        loading={deletingItem}
+        title="डिज़ाइन हटाएँ?"
+        description={`"${deleteItemTarget?.title ?? ''}" और इसकी सभी तस्वीरें हमेशा के लिए हट जाएँगी। यह वापस नहीं आएगा।`}
+        confirmLabel="हटाएँ"
+      />
     </div>
   )
 }
@@ -440,7 +482,8 @@ function CategoriesPanel({
   const [newName, setNewName] = useState('')
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(null)
   const [busy, setBusy] = useState(false)
-  const dragId = useRef<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<AdminPortfolioCategory | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   async function add(e: React.FormEvent) {
     e.preventDefault()
@@ -465,32 +508,38 @@ function CategoriesPanel({
     onChanged()
   }
 
-  async function remove(cat: AdminPortfolioCategory) {
-    if (!window.confirm(`कैटेगरी "${cat.name}" हटा दी जाएगी। इसमें जुड़े डिज़ाइन बिना कैटेगरी के रह जाएँगे। जारी रखें?`)) return
-    setBusy(true)
+  /** §8: confirmed through ConfirmDialog; the list only changes after success. */
+  async function confirmRemove() {
+    const cat = deleteTarget
+    if (!cat) return
+
+    setDeleting(true)
     const result = await deletePortfolioCategory(cat.id)
-    setBusy(false)
-    if (!result.ok) return notify('err', result.error ?? 'डिलीट नहीं हुआ')
-    notify('ok', 'कैटेगरी हटा दी गई')
+    setDeleting(false)
+
+    if (!result.ok) return notify('err', result.error ?? ADMIN_MSG.deleteFailed)
+    setDeleteTarget(null)
+    notify('ok', ADMIN_MSG.deleted)
     onChanged()
   }
 
-  async function handleDrop(targetId: string) {
-    const fromId = dragId.current
-    dragId.current = null
-    if (!fromId || fromId === targetId) return
+  /**
+   * §9/§18: index-based ↑ ↓ move. The old version was drag-only, and HTML5
+   * dragstart/drop never fire on a touchscreen — so on the owner's phone the
+   * category order was literally not editable.
+   */
+  async function move(index: number, dir: -1 | 1) {
+    const target = index + dir
+    if (target < 0 || target >= categories.length) return
 
     const ids = categories.map((c) => c.id)
-    const from = ids.indexOf(fromId)
-    const to = ids.indexOf(targetId)
-    if (from < 0 || to < 0) return
-    ids.splice(to, 0, ids.splice(from, 1)[0])
+    ;[ids[index], ids[target]] = [ids[target], ids[index]]
 
     setBusy(true)
     const result = await reorderPortfolioCategories(ids)
     setBusy(false)
-    if (!result.ok) return notify('err', result.error ?? 'क्रम सेव नहीं हुआ')
-    notify('ok', 'क्रम बदल गया')
+    if (!result.ok) return notify('err', result.error ?? ADMIN_MSG.orderFailed)
+    notify('ok', ADMIN_MSG.orderSaved)
     onChanged()
   }
 
@@ -502,7 +551,7 @@ function CategoriesPanel({
       </h3>
       <p className="font-devanagari text-xs text-text-muted">
         ये कैटेगरी पब्लिक गैलरी पर फ़िल्टर बटन के रूप में दिखती हैं — जोड़ें, नाम बदलें,
-        खींचकर क्रम बदलें या हटाएँ। कोई कोड बदलने की ज़रूरत नहीं।
+        ↑ ↓ से क्रम बदलें या हटाएँ। कोई कोड बदलने की ज़रूरत नहीं।
       </p>
 
       <div className="space-y-2">
@@ -511,24 +560,24 @@ function CategoriesPanel({
             अभी कोई कैटेगरी नहीं — नीचे से पहली कैटेगरी जोड़ें (जैसे वेडिंग, बर्थडे, मंडप)।
           </p>
         )}
-        {categories.map((cat) => (
+        {categories.map((cat, index) => (
           <div
             key={cat.id}
-            draggable
-            onDragStart={() => {
-              dragId.current = cat.id
-            }}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => handleDrop(cat.id)}
-            className="flex items-center gap-2 rounded-xl border border-gold/10 bg-bg-void/40 px-3 py-2"
+            className="flex flex-wrap items-center gap-2 rounded-xl border border-gold/10 bg-bg-void/40 px-3 py-2"
           >
-            <GripVertical size={14} className="flex-shrink-0 cursor-grab text-text-muted/60" />
+            <ReorderControls
+              busy={busy}
+              canUp={index > 0}
+              canDown={index < categories.length - 1}
+              onUp={() => void move(index, -1)}
+              onDown={() => void move(index, 1)}
+            />
             {editing?.id === cat.id ? (
               <>
                 <Input
                   value={editing.name}
                   onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                  className="max-w-[220px] py-1.5 text-sm"
+                  className="w-full min-w-0 max-w-[220px] py-1.5 text-sm"
                   autoFocus
                 />
                 <button
@@ -548,21 +597,24 @@ function CategoriesPanel({
               </>
             ) : (
               <>
-                <span className="font-devanagari flex-1 text-sm text-text-primary">{cat.name}</span>
+                <span className="font-devanagari min-w-0 flex-1 break-words text-sm text-text-primary">
+                  {cat.name}
+                </span>
+                {/* §18: 38px hit areas — the old 12px icon buttons were a miss-tap trap. */}
                 <button
                   onClick={() => setEditing({ id: cat.id, name: cat.name })}
-                  aria-label="नाम बदलें"
-                  className="rounded-lg border border-gold/25 p-1.5 text-text-muted transition hover:text-gold"
+                  aria-label={`"${cat.name}" का नाम बदलें`}
+                  className="flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center rounded-lg border border-gold/25 text-text-muted transition hover:text-gold"
                 >
-                  <Pencil size={12} />
+                  <Pencil size={14} aria-hidden />
                 </button>
                 <button
-                  onClick={() => remove(cat)}
+                  onClick={() => setDeleteTarget(cat)}
                   disabled={busy}
-                  aria-label="कैटेगरी हटाएँ"
-                  className="rounded-lg border border-red-500/25 p-1.5 text-red-300 transition hover:bg-red-950/40 disabled:opacity-60"
+                  aria-label={`कैटेगरी "${cat.name}" हटाएँ`}
+                  className="flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center rounded-lg border border-red-500/25 text-red-300 transition hover:bg-red-950/40 disabled:opacity-60"
                 >
-                  <Trash2 size={12} />
+                  <Trash2 size={14} aria-hidden />
                 </button>
               </>
             )}
@@ -586,6 +638,16 @@ function CategoriesPanel({
           जोड़ें
         </button>
       </form>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => void confirmRemove()}
+        loading={deleting}
+        title="कैटेगरी हटाएँ?"
+        description={`"${deleteTarget?.name ?? ''}" हटा दी जाएगी। इसमें जुड़े डिज़ाइन मिटेंगे नहीं — वे बिना कैटेगरी के रह जाएँगे।`}
+        confirmLabel="हटाएँ"
+      />
     </section>
   )
 }
@@ -660,12 +722,28 @@ function ItemCard({
   const fileInput = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
-  const dragMediaId = useRef<string | null>(null)
   const [reordering, setReordering] = useState(false)
 
   async function uploadFiles(files: FileList | File[]) {
-    const list = Array.from(files).filter((f) => f.type.startsWith('image/'))
-    if (list.length === 0) return notify('err', 'सिर्फ़ इमेज फ़ाइल चुनें')
+    /*
+     * §3: the same allow-list the Server Action enforces. The previous
+     * `type.startsWith('image/')` check let through SVG (which can carry
+     * script) and files of any size, so a 40MB photo straight off a phone
+     * camera would upload for a minute and then fail server-side with no
+     * useful reason. Rejecting here gives an instant, specific message.
+     */
+    const list: File[] = []
+    const rejected: string[] = []
+    for (const file of Array.from(files)) {
+      const check = validateImageFile(file)
+      if (check.ok) list.push(file)
+      else rejected.push(`${file.name}: ${check.error}`)
+    }
+
+    if (list.length === 0) {
+      return notify('err', rejected[0] ?? ADMIN_MSG.imageFailed)
+    }
+    if (rejected.length > 0) notify('err', rejected[0])
 
     setUploading(true)
     let ok = 0
@@ -688,23 +766,23 @@ function ItemCard({
     if (ok > 0) onChanged()
   }
 
-  /** Drop one image onto another to reorder; new order persists to sort_order. */
-  async function handleMediaDrop(targetId: string) {
-    const fromId = dragMediaId.current
-    dragMediaId.current = null
-    if (!fromId || fromId === targetId) return
+  /**
+   * §9/§18: ↑ ↓ move, persisted to the real sort_order column. Photo order
+   * matters here because the first image is the gallery cover, and dragging
+   * a thumbnail is impossible on a touchscreen.
+   */
+  async function moveMedia(index: number, dir: -1 | 1) {
+    const target = index + dir
+    if (target < 0 || target >= item.media.length) return
 
     const ids = item.media.map((m) => m.id)
-    const from = ids.indexOf(fromId)
-    const to = ids.indexOf(targetId)
-    if (from < 0 || to < 0) return
-    ids.splice(to, 0, ids.splice(from, 1)[0])
+    ;[ids[index], ids[target]] = [ids[target], ids[index]]
 
     setReordering(true)
     const result = await reorderPortfolioMedia(ids)
     setReordering(false)
-    if (!result.ok) return notify('err', result.error ?? 'क्रम सेव नहीं हुआ')
-    notify('ok', 'तस्वीरों का क्रम बदल गया')
+    if (!result.ok) return notify('err', result.error ?? ADMIN_MSG.orderFailed)
+    notify('ok', ADMIN_MSG.orderSaved)
     onChanged()
   }
 
@@ -784,7 +862,7 @@ function ItemCard({
         <input
           ref={fileInput}
           type="file"
-          accept="image/*"
+          accept={IMAGE_ACCEPT_ATTR}
           multiple
           className="hidden"
           onChange={(e) => {
@@ -795,40 +873,36 @@ function ItemCard({
         <button
           onClick={() => fileInput.current?.click()}
           disabled={uploading}
-          className="font-devanagari inline-flex items-center gap-2 text-sm text-gold transition hover:text-gold-warm disabled:opacity-60"
+          className="font-devanagari inline-flex min-h-[44px] items-center gap-2 px-3 text-sm text-gold transition hover:text-gold-warm disabled:opacity-60"
         >
           {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
           {uploading ? 'अपलोड हो रहा है…' : 'तस्वीरें अपलोड करें'}
         </button>
         <p className="font-devanagari mt-1 text-xs text-text-muted">
-          यहाँ खींचकर छोड़ें या क्लिक करें — एक साथ कई तस्वीरें चुन सकते हैं
+          टैप करके चुनें — एक साथ कई तस्वीरें चल जाएँगी। JPG, PNG या WebP, {MAX_IMAGE_LABEL} तक।
         </p>
       </div>
 
-      {/* Per-image pricing rows — drag the handle to reorder. */}
+      {/* Per-image pricing rows — ↑ ↓ to reorder (first image is the cover). */}
       {item.media.length === 0 ? (
         <p className="font-devanagari text-center text-sm text-text-muted">
           अभी कोई तस्वीर नहीं — ऊपर से अपलोड करें।
         </p>
       ) : (
         <div className={`space-y-3 ${reordering ? 'opacity-60' : ''}`}>
-          {item.media.map((media) => (
-            <div
+          {item.media.map((media, index) => (
+            <MediaRow
               key={media.id}
-              draggable
-              onDragStart={() => {
-                dragMediaId.current = media.id
-              }}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => handleMediaDrop(media.id)}
-            >
-              <MediaRow
-                itemId={item.id}
-                media={media}
-                onChanged={onChanged}
-                notify={notify}
-              />
-            </div>
+              itemId={item.id}
+              media={media}
+              reordering={reordering}
+              canUp={index > 0}
+              canDown={index < item.media.length - 1}
+              onMoveUp={() => void moveMedia(index, -1)}
+              onMoveDown={() => void moveMedia(index, 1)}
+              onChanged={onChanged}
+              notify={notify}
+            />
           ))}
         </div>
       )}
@@ -841,11 +915,21 @@ function ItemCard({
 function MediaRow({
   itemId,
   media,
+  reordering,
+  canUp,
+  canDown,
+  onMoveUp,
+  onMoveDown,
   onChanged,
   notify,
 }: {
   itemId: string
   media: AdminPortfolioMedia
+  reordering: boolean
+  canUp: boolean
+  canDown: boolean
+  onMoveUp: () => void
+  onMoveDown: () => void
   onChanged: () => void
   notify: (kind: 'ok' | 'err', text: string) => void
 }) {
@@ -853,6 +937,8 @@ function MediaRow({
   const [price, setPrice] = useState(media.price == null ? '' : String(media.price))
   const [bookable, setBookable] = useState(media.isBookable)
   const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const dirty =
     label !== media.variantLabel ||
@@ -889,20 +975,24 @@ function MediaRow({
   }
 
   async function remove() {
-    if (!window.confirm('यह तस्वीर हटा दी जाएगी। जारी रखें?')) return
+    setDeleting(true)
     const result = await deletePortfolioMedia(media.id)
-    if (!result.ok) return notify('err', result.error ?? 'डिलीट नहीं हुआ')
-    notify('ok', 'तस्वीर हटा दी गई')
+    setDeleting(false)
+    if (!result.ok) return notify('err', result.error ?? ADMIN_MSG.deleteFailed)
+    setConfirmDelete(false)
+    notify('ok', ADMIN_MSG.deleted)
     onChanged()
   }
 
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gold/15 bg-bg-void/40 p-3">
-      {/* Drag handle */}
-      <GripVertical
-        size={16}
-        className="flex-shrink-0 cursor-grab text-text-muted/60"
-        aria-label="क्रम बदलने के लिए खींचें"
+      {/* §9/§18: tap-to-reorder, replacing the touch-dead drag handle. */}
+      <ReorderControls
+        busy={reordering}
+        canUp={canUp}
+        canDown={canDown}
+        onUp={onMoveUp}
+        onDown={onMoveDown}
       />
 
       {/* Thumb */}
@@ -917,8 +1007,13 @@ function MediaRow({
         )}
       </div>
 
-      {/* Fields */}
-      <div className="grid min-w-[260px] flex-1 gap-2 sm:grid-cols-2">
+      {/*
+        Fields. §18: `min-w-[260px]` used to be a hard floor here — combined
+        with the thumbnail and the reorder buttons on the same flex row it
+        pushed past 360px and scrolled the whole admin page sideways. A
+        basis-based minimum lets it wrap instead of overflowing.
+      */}
+      <div className="grid flex-1 basis-[240px] gap-2 sm:grid-cols-2">
         <label className="block">
           <span className="font-devanagari mb-1 block text-[11px] text-text-muted">
             लुक का नाम
@@ -952,32 +1047,50 @@ function MediaRow({
           <button
             onClick={save}
             disabled={saving}
-            className="font-devanagari inline-flex items-center gap-1 rounded-lg bg-gold px-3 py-1.5 text-xs font-semibold text-bg-void transition hover:brightness-110 disabled:opacity-60"
+            className="font-devanagari inline-flex min-h-[38px] items-center gap-1 rounded-lg bg-gold px-4 text-xs font-semibold text-bg-void transition hover:brightness-110 disabled:opacity-60"
           >
-            {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-            सेव
+            {saving ? (
+              <Loader2 size={12} className="animate-spin" aria-hidden />
+            ) : (
+              <Check size={12} aria-hidden />
+            )}
+            {saving ? 'सेव हो रहा है…' : 'सेव'}
           </button>
         )}
 
         {!media.isCover && (
           <button
             onClick={makeCover}
-            title="कवर इमेज बनाएँ"
-            className="font-devanagari inline-flex items-center gap-1 rounded-lg border border-gold/25 px-3 py-1.5 text-xs text-text-muted transition hover:text-gold"
+            aria-label="इसे कवर इमेज बनाएँ"
+            className="font-devanagari inline-flex min-h-[38px] items-center gap-1 rounded-lg border border-gold/25 px-3 text-xs text-text-muted transition hover:text-gold"
           >
-            <Star size={12} />
+            <Star size={12} aria-hidden />
             कवर
           </button>
         )}
 
         <button
-          onClick={remove}
+          onClick={() => setConfirmDelete(true)}
           aria-label="तस्वीर हटाएँ"
-          className="rounded-lg border border-red-500/25 px-2.5 py-1.5 text-red-300 transition hover:bg-red-950/40"
+          className="flex h-[38px] w-[38px] items-center justify-center rounded-lg border border-red-500/25 text-red-300 transition hover:bg-red-950/40"
         >
-          <Trash2 size={12} />
+          <Trash2 size={14} aria-hidden />
         </button>
       </div>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={() => void remove()}
+        loading={deleting}
+        title="तस्वीर हटाएँ?"
+        description={
+          media.isCover
+            ? 'यह कवर इमेज है। हटाने के बाद अगली तस्वीर कवर बन जाएगी।'
+            : 'यह तस्वीर वेबसाइट से हट जाएगी। यह वापस नहीं आएगी।'
+        }
+        confirmLabel="हटाएँ"
+      />
 
       {/* Explain what an unpriced image does on the public site. */}
       {price.trim() === '' && (

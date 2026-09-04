@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import { SectionHeading } from '@/components/ui/SectionHeading'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { RetryableErrorState } from '@/components/ui/RetryableErrorState'
 import { getApprovedReviews } from '@/services/reviews'
 import { ReviewsPageClient } from '@/features/reviews/ReviewsPageClient'
 
@@ -13,8 +15,12 @@ export const metadata: Metadata = {
   },
 }
 
+// Reviews are moderated in the admin, so an approval must show up immediately.
+export const dynamic = 'force-dynamic'
+
 export default async function ReviewsPage() {
-  const reviews = await getApprovedReviews()
+  const result = await getApprovedReviews()
+  const reviews = result.ok ? result.data : []
 
   return (
     <div className="min-h-screen bg-bg-void pt-20">
@@ -27,7 +33,19 @@ export default async function ReviewsPage() {
         </div>
       </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <ReviewsPageClient reviews={reviews} />
+        {/* Only approved rows from public.reviews — the old static array is
+            gone, so an empty moderation queue shows an empty state rather
+            than eight testimonials nobody submitted. */}
+        {!result.ok ? (
+          <RetryableErrorState />
+        ) : reviews.length === 0 ? (
+          <EmptyState
+            title="अभी कोई समीक्षा नहीं"
+            description="जैसे ही ग्राहकों की समीक्षाएँ स्वीकरेंगी, वे यहाँ दिखाई देंगी।"
+          />
+        ) : (
+          <ReviewsPageClient reviews={reviews} />
+        )}
       </div>
     </div>
   )

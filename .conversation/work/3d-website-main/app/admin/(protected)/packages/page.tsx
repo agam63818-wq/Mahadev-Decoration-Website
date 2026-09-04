@@ -1,5 +1,5 @@
 import { getSupabaseReadClient } from '@/lib/supabase/server'
-import { isSupabaseConfigured } from '@/lib/supabase/config'
+import { isSupabaseConfigured, cardImagePublicUrl } from '@/lib/supabase/config'
 import { PackagesManager, type AdminPackage } from './PackagesManager'
 
 export const dynamic = 'force-dynamic'
@@ -13,27 +13,39 @@ export const dynamic = 'force-dynamic'
  * name_en/event_type columns, and the bullet inclusions live in package_items.
  */
 export default async function AdminPackagesPage() {
-  const packages = await loadPackages()
+  const { packages, failed } = await loadPackages()
 
-  return <PackagesManager initialPackages={packages} supabaseReady={isSupabaseConfigured()} />
+  return (
+    <PackagesManager
+      initialPackages={packages}
+      supabaseReady={isSupabaseConfigured()}
+      loadFailed={failed}
+    />
+  )
 }
 
-async function loadPackages(): Promise<AdminPackage[]> {
+async function loadPackages(): Promise<{ packages: AdminPackage[]; failed: boolean }> {
   const supabase = getSupabaseReadClient()
-  if (!supabase) return []
+  // Reported as a failure, not as "no packages": §17 requires an unreachable
+  // database and a genuinely empty table to look different to the owner.
+  if (!supabase) return { packages: [], failed: true }
 
   const { data, error } = await supabase
     .from('packages')
     .select(
       `id, slug, name, description, starting_price, price_max, setup_time_minutes,
-       decoration_area, customizable, is_featured, is_active, created_at,
+       decoration_area, customizable, is_featured, is_active, image_url, image_alt,
+       sort_order, created_at,
        package_items ( id, package_id, label, sort_order )`,
     )
+    // sort_order is the owner-controlled order added by migration 0010;
+    // created_at breaks ties so the list is deterministic.
+    .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true })
 
   if (error || !data) {
     if (error) console.error('[admin/packages] load failed:', error.message)
-    return []
+    return { packages: [], failed: true }
   }
 
   type Row = {
@@ -48,6 +60,9 @@ async function loadPackages(): Promise<AdminPackage[]> {
     customizable: boolean
     is_featured: boolean
     is_active: boolean
+    image_url: string | null
+    image_alt: string | null
+    sort_order: number | null
     package_items: Array<{
       id: string
       package_id: string
@@ -56,24 +71,31 @@ async function loadPackages(): Promise<AdminPackage[]> {
     }> | null
   }
 
-  return (data as unknown as Row[]).map((row) => ({
-    id: row.id,
-    slug: row.slug,
-    name: row.name,
-    description: row.description ?? '',
-    startingPrice: row.starting_price,
-    priceMax: row.price_max,
-    setupTimeMinutes: row.setup_time_minutes,
-    decorationArea: row.decoration_area ?? '',
-    customizable: row.customizable,
-    isFeatured: row.is_featured,
-    isActive: row.is_active,
-    items: (row.package_items ?? [])
-      .map((item) => ({
-        id: item.id,
-        label: item.label,
-        sortOrder: item.sort_order ?? 0,
-      }))
-      .sort((a, b) => a.sortOrder - b.sortOrder),
-  }))
+  return {
+    packages: (data as unknown as Row[]).map((row) => ({
+      id: row.id,
+      slug: row.slug,
+      name: row.name,
+      description: row.description ?? '',
+      startingPrice: row.starting_price,
+      priceMax: row.price_max,
+      setupTimeMinutes: row.setup_time_minutes,
+      decorationArea: row.decoration_area ?? '',
+      customizable: row.customizable,
+      isFeatured: row.is_featured,
+      isActive: row.is_active,
+      imageUrl: row.image_url,
+      imagePublicUrl: cardImagePublicUrl(row.image_url ?? ''),
+      imageAlt: row.image_alt ?? '',
+      sortOrder: row.sort_order ?? 0,
+      items: (row.package_items ?? [])
+        .map((item) => ({
+          id: item.id,
+          label: item.label,
+          sortOrder: item.sort_order ?? 0,
+        }))
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+    })),
+    failed: false,
+  }
 }

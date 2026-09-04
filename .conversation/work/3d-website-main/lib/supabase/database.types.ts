@@ -148,6 +148,39 @@ export type BookingRequestRow = {
   contact_email: string | null
   /** The exact priced look the customer picked in the gallery (nullable). */
   selected_portfolio_media_id: string | null
+  /*
+   * Historical snapshots, written ONCE at booking creation (migration 0011).
+   *
+   * These exist so a later catalog edit cannot rewrite booking history. Read
+   * these — never re-derive a past booking's price or photo by joining to the
+   * current portfolio_media row.
+   *
+   * Null on bookings created before 0011 ran: those genuinely have no recorded
+   * historical value, and inventing one would be fabricated data.
+   */
+  selected_variant_label_snapshot: string | null
+  selected_price_snapshot: number | null
+  selected_image_url_snapshot: string | null
+  selected_item_title_snapshot: string | null
+  created_at: string
+}
+
+/**
+ * public.notifications (migration 0011) — the admin bell.
+ *
+ * Admin-only by RLS: there is no public read policy. Inserted server-side by
+ * /api/booking-requests; a UNIQUE index on (booking_request_id, type) makes
+ * that insert idempotent.
+ */
+export type NotificationRow = {
+  id: string
+  type: string
+  booking_request_id: string | null
+  title: string
+  message: string
+  image_url_snapshot: string | null
+  is_read: boolean
+  read_at: string | null
   created_at: string
 }
 
@@ -208,6 +241,12 @@ export type ServiceAreaRow = {
   created_at: string
 }
 
+/**
+ * public.reviews — created by migration 0009, which was written to match THIS
+ * pre-existing Row type rather than renaming its columns: the date column is
+ * `date` (not event_date) and the flag is `featured` (not is_featured).
+ * Only APPROVED rows are readable with the anon key (RLS).
+ */
 export type ReviewRow = {
   id: string
   customer_name: string
@@ -215,14 +254,17 @@ export type ReviewRow = {
   event_type: string | null
   rating: number
   review_text: string | null
+  /** Photo of the decorated event. Resolve with cardImagePublicUrl(). */
   event_photo_url: string | null
   event_photo_alt: string | null
   customer_photo_url: string | null
   customer_photo_alt: string | null
+  /** Date of the event being reviewed (DATE column). */
   date: string | null
   featured: boolean
   approved: boolean
   created_at: string
+  updated_at: string
 }
 
 /**
@@ -242,6 +284,15 @@ export type PackageRow = {
   customizable: boolean
   is_featured: boolean
   is_active: boolean
+  /**
+   * Added by migration 0010. Same convention as services.image_url: a
+   * bucket-relative path in `card-images`, a /assets/... site path, or an
+   * absolute URL. Resolve with cardImagePublicUrl().
+   */
+  image_url: string | null
+  image_alt: string | null
+  /** Added by migration 0010 — owner-controlled grid position. */
+  sort_order: number
   created_at: string
   updated_at: string
 }
@@ -252,6 +303,69 @@ export type PackageItemRow = {
   package_id: string
   label: string
   sort_order: number
+}
+
+/**
+ * public.services — the twelve service cards on /services (migration 0005).
+ * Column set matches 0005_services.sql exactly.
+ */
+export type ServiceRow = {
+  id: string
+  slug: string
+  name: string
+  name_en: string
+  description: string
+  description_en: string | null
+  /** Lucide icon name, used only when image_url is empty. */
+  icon: string | null
+  event_type: string
+  starting_price: number
+  /**
+   * Either a bucket-relative object path in the `card-images` bucket, a
+   * site-relative /assets/... path, or an absolute URL. Resolve with
+   * cardImagePublicUrl().
+   */
+  image_url: string | null
+  image_alt: string | null
+  is_featured: boolean
+  is_active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+/** public.team_members — /about "हमारी टीम" cards (migration 0006). */
+export type TeamMemberRow = {
+  id: string
+  name: string
+  /** Hindi role label shown on the card. */
+  role: string
+  photo_url: string | null
+  /** Owner's internal contact number — never selected by the public query. */
+  phone: string | null
+  is_active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * public.payments — the only source of truth for the /admin/payments totals.
+ * Column set matches supabase/schema.sql (defensively re-asserted by
+ * migration 0008). `status` is free text; the values the UI groups on are
+ * 'captured'/'completed'/'success' (received), 'created'/'pending'
+ * (pending), 'failed', 'refunded'.
+ */
+export type PaymentRow = {
+  id: string
+  booking_id: string | null
+  customer_id: string | null
+  razorpay_order_id: string | null
+  razorpay_payment_id: string | null
+  payment_type: string | null
+  amount: number | null
+  status: string | null
+  created_at: string
 }
 
 /** public.occasions — home page "अपने अवसर को चुनें" cards (migration 0004). */
@@ -290,6 +404,10 @@ export type Database = {
       packages: TableOf<PackageRow>
       package_items: TableOf<PackageItemRow>
       occasions: TableOf<OccasionRow>
+      services: TableOf<ServiceRow>
+      team_members: TableOf<TeamMemberRow>
+      payments: TableOf<PaymentRow>
+      notifications: TableOf<NotificationRow>
     }
     Views: Record<string, never>
     Functions: {

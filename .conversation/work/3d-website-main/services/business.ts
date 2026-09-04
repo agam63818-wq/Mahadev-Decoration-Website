@@ -8,6 +8,10 @@ import type {
   WhyChooseFeature,
   TeamMember,
 } from '@/types'
+// Static imports below are BRAND CONSTANTS only (name, tagline, hero copy,
+// process steps, "why choose us" bullets, service areas). They are marketing
+// copy, not business records, so they are a legitimate default — unlike
+// teamMembers, which is now a real database table and is no longer imported.
 import {
   businessSettings,
   heroStats,
@@ -15,10 +19,23 @@ import {
   processSteps,
   whyChooseFeatures,
   serviceAreas,
-  teamMembers,
 } from '@/lib/data'
 import { getSupabaseReadClient } from '@/lib/supabase/server'
-import type { BusinessSettingsRow } from '@/lib/supabase/database.types'
+import { cardImagePublicUrl } from '@/lib/supabase/config'
+import type { BusinessSettingsRow, TeamMemberRow } from '@/lib/supabase/database.types'
+import {
+  dataError,
+  dataOk,
+  logQueryFailure,
+  SUPABASE_UNCONFIGURED,
+  type DataResult,
+} from './result'
+
+/** Exactly the team columns the public About card needs — `phone` excluded. */
+type TeamMemberPublicRow = Pick<
+  TeamMemberRow,
+  'id' | 'name' | 'role' | 'photo_url' | 'is_active' | 'sort_order'
+>
 
 // ─── Business Settings Service ────────────────────────────────────────────────
 // business_settings is a singleton row and the single source of truth for
@@ -117,6 +134,60 @@ export async function getServiceAreas(): Promise<ServiceArea[]> {
   return serviceAreas
 }
 
-export async function getTeamMembers(): Promise<TeamMember[]> {
-  return teamMembers
+// ─── Team members ─────────────────────────────────────────────────────────────
+// Backed by public.team_members (migration 0006), seeded once with exactly the
+// three members the About page already showed.
+//
+// NO STATIC RUNTIME FALLBACK (§12/§13): the old implementation returned the
+// `teamMembers` array from lib/data/business.ts unconditionally, so the owner
+// could not add a decorator and a database failure was invisible. Now a failed
+// query returns an explicit error and /about renders a real error state.
+//
+// `phone` is deliberately NOT selected: team_members is publicly readable for
+// active rows, and the owner's internal contact numbers should not be shipped
+// in the page payload. It exists for the Part 2 admin list only.
+const TEAM_COLUMNS = 'id, name, role, photo_url, is_active, sort_order'
+
+function mapTeamMember(row: TeamMemberPublicRow): TeamMember {
+  const photo = cardImagePublicUrl(row.photo_url ?? '')
+  return {
+    id: row.id,
+    name: row.name ?? '',
+    // The live table has ONE role column, holding the Hindi label the card
+    // shows most prominently. There is no separate English role column, so
+    // both fields read from it rather than inventing a translation.
+    role: row.role ?? '',
+    roleHindi: row.role ?? '',
+    // No bio / yearsExperience columns exist in team_members (§10: do not
+    // invent fields the project does not need). The About card already treats
+    // these as optional text and omits the line when empty.
+    bio: '',
+    photoUrl: photo,
+    photoAlt: photo ? `${row.name ?? ''} — महादेव डेकोरेशन` : '',
+    yearsExperience: 0,
+  }
+}
+
+/** Active team members in display order. */
+export async function getTeamMembers(): Promise<DataResult<TeamMember[]>> {
+  const supabase = getSupabaseReadClient()
+  if (!supabase) {
+    logQueryFailure('team_members', SUPABASE_UNCONFIGURED)
+    return dataError(SUPABASE_UNCONFIGURED)
+  }
+
+  const { data, error } = await supabase
+    .from('team_members')
+    .select(TEAM_COLUMNS)
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true })
+
+  if (error) {
+    logQueryFailure('team_members', error.message)
+    return dataError(error.message)
+  }
+
+  // Zero rows is a legitimate state (owner deactivated everyone) — reported as
+  // success so the About page hides the section instead of showing seed data.
+  return dataOk((data as unknown as TeamMemberPublicRow[] | null)?.map(mapTeamMember) ?? [])
 }

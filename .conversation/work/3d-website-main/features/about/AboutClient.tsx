@@ -1,19 +1,76 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Award, Users, MapPin, Heart, Star } from 'lucide-react'
+import { Award, Users, MapPin, Heart } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
+import { useState } from 'react'
 import type { TeamMember, Stat, BusinessSettings } from '@/types'
 import { SectionHeading } from '@/components/ui/SectionHeading'
 import { StatBadge } from '@/components/ui/StatBadge'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { RetryableErrorState } from '@/components/ui/RetryableErrorState'
 
 interface AboutClientProps {
   teamMembers: TeamMember[]
+  /** True when the team_members query failed — shows a retryable error state. */
+  teamError?: boolean
   stats: Stat[]
   business: BusinessSettings
 }
 
-export function AboutClient({ teamMembers, stats, business }: AboutClientProps) {
+/**
+ * One team card. Renders the admin-uploaded photo_url when present and falls
+ * back to the member's initial only when there is genuinely no photo (or the
+ * photo fails to load), so a deleted storage object never leaves a broken
+ * image on the page.
+ */
+function TeamCard({ member, index }: { member: TeamMember; index: number }) {
+  const [photoFailed, setPhotoFailed] = useState(false)
+  const showPhoto = Boolean(member.photoUrl) && !photoFailed
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5, delay: index * 0.1 }}
+      className="bg-bg-purple border border-gold/10 rounded-2xl p-6 hover:border-gold/30 transition-colors"
+    >
+      {/* Avatar — real photo, else initial */}
+      <div className="relative w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-gold/30 to-bg-burgundy border-2 border-gold/30 flex items-center justify-center mx-auto mb-4 text-2xl font-bold text-gold">
+        {showPhoto ? (
+          <Image
+            src={member.photoUrl}
+            alt={member.photoAlt || member.name}
+            fill
+            sizes="80px"
+            onError={() => setPhotoFailed(true)}
+            className="object-cover"
+          />
+        ) : (
+          member.name.charAt(0)
+        )}
+      </div>
+      <div className="text-center">
+        <h3 className="text-champagne font-bold font-devanagari">{member.name}</h3>
+        {member.roleHindi && (
+          <p className="text-gold text-sm font-devanagari">{member.roleHindi}</p>
+        )}
+        {/* The bio and years-of-experience lines are only rendered when the
+            row actually has that data. team_members has no bio/experience
+            columns, so inventing "5+ वर्ष" for every member would be fake. */}
+        {member.bio && (
+          <p className="mt-3 text-text-muted text-sm font-devanagari leading-relaxed">
+            {member.bio}
+          </p>
+        )}
+      </div>
+    </motion.div>
+  )
+}
+
+export function AboutClient({ teamMembers, teamError, stats, business }: AboutClientProps) {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-20">
       {/* Brand story */}
@@ -95,35 +152,20 @@ export function AboutClient({ teamMembers, stats, business }: AboutClientProps) 
       {/* Team */}
       <section aria-labelledby="team-heading">
         <SectionHeading id="team-heading" title="हमारी टीम" className="mb-10" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {teamMembers.map((member, i) => (
-            <motion.div
-              key={member.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: i * 0.1 }}
-              className="bg-bg-purple border border-gold/10 rounded-2xl p-6 hover:border-gold/30 transition-colors"
-            >
-              {/* Avatar */}
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gold/30 to-bg-burgundy border-2 border-gold/30 flex items-center justify-center mx-auto mb-4 text-2xl font-bold text-gold">
-                {member.name.charAt(0)}
-              </div>
-              <div className="text-center">
-                <h3 className="text-champagne font-bold font-devanagari">{member.name}</h3>
-                <p className="text-gold text-sm font-devanagari">{member.roleHindi}</p>
-                <p className="text-text-muted text-xs mb-3">{member.role}</p>
-                <p className="text-text-muted text-sm font-devanagari leading-relaxed">{member.bio}</p>
-                <div className="mt-3 flex items-center justify-center gap-1">
-                  {[...Array(5)].map((_, j) => (
-                    <Star key={j} size={12} className="text-gold fill-gold" />
-                  ))}
-                  <span className="text-text-muted text-xs ml-1">{member.yearsExperience}+ वर्ष</span>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+        {teamError ? (
+          <RetryableErrorState />
+        ) : teamMembers.length === 0 ? (
+          <EmptyState
+            title="टीम की जानकारी उपलब्ध नहीं"
+            description="अभी टीम के सदस्य जोड़े नहीं गए हैं।"
+          />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {teamMembers.map((member, i) => (
+              <TeamCard key={member.id} member={member} index={i} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* CTA */}

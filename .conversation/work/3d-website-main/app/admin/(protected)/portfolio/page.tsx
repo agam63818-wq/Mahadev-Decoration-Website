@@ -22,16 +22,27 @@ export default async function AdminPortfolioPage() {
 
   return (
     <PortfolioManager
-      initialItems={items}
-      initialCategories={categories}
+      initialItems={items.items}
+      initialCategories={categories.categories}
+      loadFailed={items.failed || categories.failed}
       supabaseReady={isSupabaseConfigured()}
     />
   )
 }
 
-async function loadCategories(): Promise<AdminPortfolioCategory[]> {
+/*
+ * §17: an empty list and a failed request are NOT the same thing. Returning []
+ * for both would show the owner "अभी कोई डिज़ाइन नहीं जोड़ा गया" after a network
+ * blip — implying his gallery had been wiped. `failed` lets the UI show an
+ * explicit error with a Retry button instead.
+ */
+async function loadCategories(): Promise<{
+  categories: AdminPortfolioCategory[]
+  failed: boolean
+}> {
   const supabase = getSupabaseReadClient()
-  if (!supabase) return []
+  // Not configured is a configuration problem, not an empty gallery.
+  if (!supabase) return { categories: [], failed: true }
 
   const { data, error } = await supabase
     .from('portfolio_categories')
@@ -40,10 +51,10 @@ async function loadCategories(): Promise<AdminPortfolioCategory[]> {
 
   if (error || !data) {
     if (error) console.error('[admin/portfolio] categories load failed:', error.message)
-    return []
+    return { categories: [], failed: true }
   }
 
-  return (data as unknown as Array<{
+  const categories = (data as unknown as Array<{
     id: string
     slug: string
     name: string
@@ -54,11 +65,13 @@ async function loadCategories(): Promise<AdminPortfolioCategory[]> {
     name: row.name,
     sortOrder: row.sort_order,
   }))
+
+  return { categories, failed: false }
 }
 
-async function loadItems(): Promise<AdminPortfolioItem[]> {
+async function loadItems(): Promise<{ items: AdminPortfolioItem[]; failed: boolean }> {
   const supabase = getSupabaseReadClient()
-  if (!supabase) return []
+  if (!supabase) return { items: [], failed: true }
 
   const { data, error } = await supabase
     .from('portfolio_items')
@@ -73,7 +86,7 @@ async function loadItems(): Promise<AdminPortfolioItem[]> {
 
   if (error || !data) {
     if (error) console.error('[admin/portfolio] load failed:', error.message)
-    return []
+    return { items: [], failed: true }
   }
 
   type Row = {
@@ -100,7 +113,7 @@ async function loadItems(): Promise<AdminPortfolioItem[]> {
       | null
   }
 
-  return (data as unknown as Row[]).map((row) => {
+  const items = (data as unknown as Row[]).map((row) => {
     const media = (row.portfolio_media ?? [])
       .map((m) => ({
         id: m.id,
@@ -133,4 +146,6 @@ async function loadItems(): Promise<AdminPortfolioItem[]> {
       media,
     }
   })
+
+  return { items, failed: false }
 }
