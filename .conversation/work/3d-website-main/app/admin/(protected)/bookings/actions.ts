@@ -60,8 +60,11 @@ export async function convertBookingRequest(input: unknown): Promise<BookingWork
   return { ok: true, bookingId: String(data) }
 }
 
-/** Update the inbound request and, when it has already been converted,
- * keep the real booking status in sync with it. */
+/**
+ * Update the inbound request and its converted booking in ONE database
+ * transaction. This prevents a date-conflict or other booking-side failure
+ * from leaving the request and the real booking with different statuses.
+ */
 export async function updateBookingRequestStatus(input: unknown): Promise<BookingWorkflowResult> {
   const parsed = z.object({ requestId: requestIdSchema, status: statusSchema }).safeParse(input)
   if (!parsed.success) return { ok: false, error: parsed.error.errors[0]?.message ?? 'अमान्य स्थिति' }
@@ -69,41 +72,27 @@ export async function updateBookingRequestStatus(input: unknown): Promise<Bookin
   const { supabase, error: authError } = await requireAdmin()
   if (authError || !supabase) return { ok: false, error: authError ?? 'Unavailable' }
 
-  const patch = {
-    status: parsed.data.status,
-    updated_at: new Date().toISOString(),
-  } as never
+  const rpc = supabase.rpc.bind(supabase) as unknown as (
+    name: string,
+    args: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message: string; code?: string; hint?: string } | null }>
 
-  const { data, error } = await supabase
-    .from('booking_requests')
-    .update(patch)
-    .eq('id', parsed.data.requestId)
-    .select('id')
-    .maybeSingle()
+  const { data, error } = await rpc('sync_booking_request_status', {
+    p_request_id: parsed.data.requestId,
+    p_status: parsed.data.status,
+  })
 
   if (error) {
-    console.error('[admin/bookings] request status update failed:', error.message)
-    return { ok: false, error: 'स्थिति अपडेट नहीं हो सकी। कृपया फिर कोशिश करें।' }
-  }
-  if (!data) return { ok: false, error: 'बुकिंग रिक्वेस्ट नहीं मिली।' }
-
-  // PR #12 creates the real booking with booking_request_id. If it exists,
-  // mirror the workflow status there too. The cast is intentionally narrow
-  // because the generated client types lag behind the live schema.
-  const bookingPatch = {
-    status: parsed.data.status,
-    updated_at: new Date().toISOString(),
-  } as never
-  const { error: bookingError } = await supabase
-    .from('bookings')
-    .update(bookingPatch)
-    .eq('booking_request_id', parsed.data.requestId)
-
-  if (bookingError) {
-    console.error('[admin/bookings] converted booking status sync failed:', bookingError.message)
-    return { ok: false, error: 'रिक्वेस्ट अपडेट हो गई, लेकिन वास्तविक बुकिंग की स्थिति अपडेट नहीं हो सकी।' }
+    console.error('[admin/bookings] atomic status sync failed:', error.message)
+    if (error.code === '23P01' || error.message === 'booking_date_conflict') {
+      return { ok: false, error: 'इस तारीख पर पहले से एक कन्फर्म/सक्रिय बुकिंग है। स्थिति कन्फर्म नहीं की गई।' }
+    }
+    if (error.code === 'P0002' || error.message === 'booking_request_not_found') {
+      return { ok: false, error: 'बुकिंग रिक्वेस्ट नहीं मिली।' }
+    }
+    return { ok: false, error: 'स्थिति अपडेट नहीं हो सकी। कोई आंशिक बदलाव नहीं किया गया।' }
   }
 
   revalidateBookingWorkflow()
-  return { ok: true, bookingId: parsed.data.requestId }
+  return { ok: true, bookingId: String(data) }
 }
