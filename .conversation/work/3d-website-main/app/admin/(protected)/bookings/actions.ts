@@ -12,32 +12,16 @@ export type BookingWorkflowResult = {
 }
 
 const requestIdSchema = z.string().uuid('बुकिंग रिक्वेस्ट की पहचान अमान्य है')
-const priceSchema = z
-  .number({ invalid_type_error: 'कुल कीमत अंकों में डालें' })
-  .finite()
-  .min(0, 'कुल कीमत 0 से कम नहीं हो सकती')
-  .max(100000000, 'कुल कीमत बहुत ज़्यादा है')
-
+const priceSchema = z.number({ invalid_type_error: 'कुल कीमत अंकों में डालें' }).finite().min(0, 'कुल कीमत 0 से कम नहीं हो सकती').max(100000000, 'कुल कीमत बहुत ज़्यादा है')
 const statusSchema = z.enum([
-  'inquiry',
-  'pending_review',
-  'quote_sent',
-  'awaiting_customer_approval',
-  'advance_pending',
-  'confirmed',
-  'in_preparation',
-  'team_assigned',
-  'in_progress',
-  'completed',
-  'remaining_payment_pending',
-  'closed',
-  'cancelled',
+  'inquiry', 'pending_review', 'quote_sent', 'awaiting_customer_approval', 'advance_pending',
+  'confirmed', 'in_preparation', 'team_assigned', 'in_progress', 'completed',
+  'remaining_payment_pending', 'closed', 'cancelled',
 ])
 
 async function requireAdmin() {
   const admin = await getAdminUser()
   if (!admin) return { supabase: null, error: 'अनुमति नहीं है। कृपया दोबारा लॉगिन करें।' }
-
   const supabase = getSupabaseWriteClient()
   if (!supabase) return { supabase: null, error: 'Supabase कॉन्फ़िगर नहीं है।' }
   return { supabase, error: null }
@@ -50,32 +34,24 @@ function revalidateBookingWorkflow() {
   revalidatePath('/admin')
 }
 
-/**
- * Convert one inbound request into one operational booking.
- *
- * The database RPC is intentionally atomic and idempotent. The server action
- * only authorises the caller, validates the input and delegates the mutation.
- * Payment is NOT touched here; a newly converted booking starts with zero
- * advance paid and the full amount remaining.
- */
-export async function convertBookingRequest(
-  input: unknown,
-): Promise<BookingWorkflowResult> {
-  const parsed = z
-    .object({
-      requestId: requestIdSchema,
-      totalPrice: priceSchema,
-    })
-    .safeParse(input)
-
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.errors[0]?.message ?? 'अमान्य जानकारी' }
-  }
+/** Atomic/idempotent database conversion; payment is intentionally untouched. */
+export async function convertBookingRequest(input: unknown): Promise<BookingWorkflowResult> {
+  const parsed = z.object({ requestId: requestIdSchema, totalPrice: priceSchema }).safeParse(input)
+  if (!parsed.success) return { ok: false, error: parsed.error.errors[0]?.message ?? 'अमान्य जानकारी' }
 
   const { supabase, error: authError } = await requireAdmin()
   if (authError || !supabase) return { ok: false, error: authError ?? 'Unavailable' }
 
-  const { data, error } = await supabase.rpc('convert_booking_request_to_booking', {
+  // The live database migration is deliberately the source of truth for this
+  // RPC. The generated local type file predates the function, so keep this
+  // narrow escape hatch local to the call rather than weakening the whole
+  // Supabase client type.
+  const rpc = supabase.rpc.bind(supabase) as unknown as (
+    name: string,
+    args: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message: string } | null }>
+
+  const { data, error } = await rpc('convert_booking_request_to_booking', {
     p_request_id: parsed.data.requestId,
     p_total_price: parsed.data.totalPrice,
   })
@@ -90,19 +66,9 @@ export async function convertBookingRequest(
 }
 
 /** Change only the request status; it never rewrites customer/event data. */
-export async function updateBookingRequestStatus(
-  input: unknown,
-): Promise<BookingWorkflowResult> {
-  const parsed = z
-    .object({
-      requestId: requestIdSchema,
-      status: statusSchema,
-    })
-    .safeParse(input)
-
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.errors[0]?.message ?? 'अमान्य स्थिति' }
-  }
+export async function updateBookingRequestStatus(input: unknown): Promise<BookingWorkflowResult> {
+  const parsed = z.object({ requestId: requestIdSchema, status: statusSchema }).safeParse(input)
+  if (!parsed.success) return { ok: false, error: parsed.error.errors[0]?.message ?? 'अमान्य स्थिति' }
 
   const { supabase, error: authError } = await requireAdmin()
   if (authError || !supabase) return { ok: false, error: authError ?? 'Unavailable' }
@@ -118,7 +84,6 @@ export async function updateBookingRequestStatus(
     console.error('[admin/bookings] status update failed:', error.message)
     return { ok: false, error: 'स्थिति अपडेट नहीं हो सकी। कृपया फिर कोशिश करें।' }
   }
-
   if (!data) return { ok: false, error: 'बुकिंग रिक्वेस्ट नहीं मिली।' }
 
   revalidateBookingWorkflow()
