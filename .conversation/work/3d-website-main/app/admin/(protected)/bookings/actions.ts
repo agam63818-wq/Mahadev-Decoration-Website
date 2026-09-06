@@ -41,7 +41,7 @@ export async function convertBookingRequest(input: unknown): Promise<BookingWork
   const rpc = supabase.rpc.bind(supabase) as unknown as (
     name: string,
     args: Record<string, unknown>,
-  ) => Promise<{ data: unknown; error: { message: string } | null }>
+  ) => Promise<{ data: unknown; error: { message: string; code?: string; hint?: string } | null }>
 
   const { data, error } = await rpc('convert_booking_request_to_booking', {
     p_request_id: parsed.data.requestId,
@@ -50,6 +50,9 @@ export async function convertBookingRequest(input: unknown): Promise<BookingWork
 
   if (error) {
     console.error('[admin/bookings] conversion failed:', error.message)
+    if (error.code === '23P01' || error.message === 'booking_date_conflict') {
+      return { ok: false, error: 'इस तारीख पर पहले से एक कन्फर्म/सक्रिय बुकिंग है। दूसरी बुकिंग कन्फर्म करने से पहले तारीख बदलें या पुरानी बुकिंग की स्थिति जाँचें।' }
+    }
     return { ok: false, error: 'बुकिंग बन नहीं सकी। कृपया फिर कोशिश करें।' }
   }
 
@@ -57,7 +60,11 @@ export async function convertBookingRequest(input: unknown): Promise<BookingWork
   return { ok: true, bookingId: String(data) }
 }
 
-/** Change only the request status; it never rewrites customer/event data. */
+/**
+ * Update the inbound request and its converted booking in ONE database
+ * transaction. This prevents a date-conflict or other booking-side failure
+ * from leaving the request and the real booking with different statuses.
+ */
 export async function updateBookingRequestStatus(input: unknown): Promise<BookingWorkflowResult> {
   const parsed = z.object({ requestId: requestIdSchema, status: statusSchema }).safeParse(input)
   if (!parsed.success) return { ok: false, error: parsed.error.errors[0]?.message ?? 'अमान्य स्थिति' }
@@ -65,27 +72,27 @@ export async function updateBookingRequestStatus(input: unknown): Promise<Bookin
   const { supabase, error: authError } = await requireAdmin()
   if (authError || !supabase) return { ok: false, error: authError ?? 'Unavailable' }
 
-  // The generated schema file is older than the live booking_status enum, so
-  // keep this cast narrow to the single update payload instead of weakening
-  // the entire Supabase client.
-  const patch = {
-    status: parsed.data.status,
-    updated_at: new Date().toISOString(),
-  } as never
+  const rpc = supabase.rpc.bind(supabase) as unknown as (
+    name: string,
+    args: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message: string; code?: string; hint?: string } | null }>
 
-  const { data, error } = await supabase
-    .from('booking_requests')
-    .update(patch)
-    .eq('id', parsed.data.requestId)
-    .select('id')
-    .maybeSingle()
+  const { data, error } = await rpc('sync_booking_request_status', {
+    p_request_id: parsed.data.requestId,
+    p_status: parsed.data.status,
+  })
 
   if (error) {
-    console.error('[admin/bookings] status update failed:', error.message)
-    return { ok: false, error: 'स्थिति अपडेट नहीं हो सकी। कृपया फिर कोशिश करें।' }
+    console.error('[admin/bookings] atomic status sync failed:', error.message)
+    if (error.code === '23P01' || error.message === 'booking_date_conflict') {
+      return { ok: false, error: 'इस तारीख पर पहले से एक कन्फर्म/सक्रिय बुकिंग है। स्थिति कन्फर्म नहीं की गई।' }
+    }
+    if (error.code === 'P0002' || error.message === 'booking_request_not_found') {
+      return { ok: false, error: 'बुकिंग रिक्वेस्ट नहीं मिली।' }
+    }
+    return { ok: false, error: 'स्थिति अपडेट नहीं हो सकी। कोई आंशिक बदलाव नहीं किया गया।' }
   }
-  if (!data) return { ok: false, error: 'बुकिंग रिक्वेस्ट नहीं मिली।' }
 
   revalidateBookingWorkflow()
-  return { ok: true, bookingId: parsed.data.requestId }
+  return { ok: true, bookingId: String(data) }
 }
