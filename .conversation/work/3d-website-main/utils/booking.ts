@@ -20,8 +20,12 @@ export function buildBookingUrl(context: BookingPrefillContext): string {
 }
 
 export function buildWhatsAppUrl(phone: string, message?: string): string {
+  // WhatsApp requires an international number without punctuation. Settings
+  // may contain a local Indian mobile number, +91, or a 00-prefixed number.
+  const digits = phone.replace(/\D/g, '').replace(/^00/, '')
+  const international = digits.length === 10 ? `91${digits}` : digits
   const encoded = message ? encodeURIComponent(message) : ''
-  return `https://wa.me/${phone}${encoded ? `?text=${encoded}` : ''}`
+  return `https://wa.me/${international}${encoded ? `?text=${encoded}` : ''}`
 }
 
 export function formatPrice(price: number): string {

@@ -12,33 +12,33 @@ const config: Config = {
     extend: {
       colors: {
         // Deep background noir tones
-        'bg-void':        '#07040C',
-        'bg-void-2':      '#0D0815',
-        'bg-rich':        '#11081F',
-        'bg-purple':      '#1A0B2E',
-        'bg-burgundy':    '#2D0B1C',
-        'bg-deep-red':    '#3A0F24',
+        'bg-void':        'rgb(var(--theme-bg-void, 7 4 12) / <alpha-value>)',
+        'bg-void-2':      'rgb(var(--theme-bg-void-2, 13 8 21) / <alpha-value>)',
+        'bg-rich':        'rgb(var(--theme-bg-rich, 17 8 31) / <alpha-value>)',
+        'bg-purple':      'rgb(var(--theme-bg-purple, 26 11 46) / <alpha-value>)',
+        'bg-burgundy':    'rgb(var(--theme-bg-burgundy, 45 11 28) / <alpha-value>)',
+        'bg-deep-red':    'rgb(var(--theme-bg-deep-red, 58 15 36) / <alpha-value>)',
 
         // Refined gold family
-        gold:             '#C9A84C',
-        'gold-warm':      '#D4AF37',
-        'gold-bright':    '#E8C858',
-        'gold-light':     '#F0C868',
-        'gold-muted':     '#8A7028',
-        'gold-dim':       '#5A4A15',
+        gold:             'rgb(var(--theme-gold, 201 168 76) / <alpha-value>)',
+        'gold-warm':      'rgb(var(--theme-gold-warm, 212 175 55) / <alpha-value>)',
+        'gold-bright':    'rgb(var(--theme-gold-bright, 232 200 88) / <alpha-value>)',
+        'gold-light':     'rgb(var(--theme-gold-light, 240 200 104) / <alpha-value>)',
+        'gold-muted':     'rgb(var(--theme-gold-muted, 138 112 40) / <alpha-value>)',
+        'gold-dim':       'rgb(var(--theme-gold-dim, 90 74 21) / <alpha-value>)',
 
         // Warm accent tones
-        champagne:        '#F5E8D0',
-        ivory:            '#FDF8F0',
-        amber:            '#E8A33D',
-        emerald:          '#1A6B4A',
-        'floral-red':     '#8B1E3F',
-        rose:             '#E8A0B4',
+        champagne:        'rgb(var(--theme-champagne, 245 232 208) / <alpha-value>)',
+        ivory:            'rgb(var(--theme-ivory, 253 248 240) / <alpha-value>)',
+        amber:            'rgb(var(--theme-amber, 232 163 61) / <alpha-value>)',
+        emerald:          'rgb(var(--theme-emerald, 26 107 74) / <alpha-value>)',
+        'floral-red':     'rgb(var(--theme-floral-red, 139 30 63) / <alpha-value>)',
+        rose:             'rgb(var(--theme-rose, 232 160 180) / <alpha-value>)',
 
         // Text
-        'text-primary':   '#F8F3EC',
-        'text-muted':     '#B0A0C5',
-        'text-dim':       '#7B6B8A',
+        'text-primary':   'rgb(var(--theme-text-primary, 248 243 236) / <alpha-value>)',
+        'text-muted':     'rgb(var(--theme-text-muted, 176 160 197) / <alpha-value>)',
+        'text-dim':       'rgb(var(--theme-text-dim, 123 107 138) / <alpha-value>)',
       },
       fontFamily: {
         display:   ['var(--font-display)', 'serif'],

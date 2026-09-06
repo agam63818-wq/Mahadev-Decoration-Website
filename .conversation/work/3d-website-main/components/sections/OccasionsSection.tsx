@@ -30,13 +30,13 @@ function OccasionCard({ occasion, index }: OccasionCardProps) {
   return (
     <StaggerItem className="group h-full">
       <TiltCard
-        maxTilt={5}
-        lift={6}
+        maxTilt={0}
+        lift={2}
         className={[
-          'h-full flex flex-col overflow-hidden rounded-2xl cursor-pointer',
+          'h-full flex flex-col overflow-hidden rounded-lg cursor-pointer',
           'bg-gradient-to-br from-bg-purple to-bg-rich',
           'border border-gold/10 hover:border-gold/40',
-          'shadow-card-lift hover:shadow-gold-glow-sm',
+          'shadow-none',
           'transition-[border-color,box-shadow] duration-300',
         ].join(' ')}
         onClick={handleView}
@@ -48,7 +48,7 @@ function OccasionCard({ occasion, index }: OccasionCardProps) {
               src={imageSrc}
               alt={occasion.imageAlt || occasion.name}
               fill
-              sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 16vw"
+              sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 33vw"
               priority={index < 2}
               className="object-cover transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06] will-change-transform"
             />
@@ -106,11 +106,6 @@ interface OccasionsSectionProps {
   occasions: Occasion[]
 }
 
-const statEmoji: Record<string, string> = {
-  Trophy: '🏅',
-  Users: '👥',
-  MapPin: '📍',
-}
 
 export function OccasionsSection({ occasions }: OccasionsSectionProps) {
   return (
@@ -134,7 +129,7 @@ export function OccasionsSection({ occasions }: OccasionsSectionProps) {
 
         {/* 6-card grid */}
         <Stagger
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-12"
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 mb-12"
           stagger={0.08}
         >
           {occasions.map((occasion, i) => (
@@ -155,7 +150,7 @@ export function OccasionsSection({ occasions }: OccasionsSectionProps) {
                 className="flex items-center gap-3 group"
               >
                 <div className="w-10 h-10 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center flex-shrink-0 group-hover:border-gold/50 group-hover:bg-gold/20 group-hover:shadow-gold-glow-sm transition-all duration-300">
-                  <span className="text-gold text-sm">{statEmoji[stat.icon] ?? '★'}</span>
+                  <span className="text-gold text-sm" aria-hidden="true">+</span>
                 </div>
                 <div className="min-w-0">
                   <p className="text-gold font-bold text-base md:text-lg font-devanagari group-hover:text-gold-bright transition-colors tabular-nums">
