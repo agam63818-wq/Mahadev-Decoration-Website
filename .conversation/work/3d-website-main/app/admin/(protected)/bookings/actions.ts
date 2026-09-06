@@ -5,11 +5,7 @@ import { z } from 'zod'
 import { getAdminUser } from '@/lib/auth/session'
 import { getSupabaseWriteClient } from '@/lib/supabase/server'
 
-export type BookingWorkflowResult = {
-  ok: boolean
-  error?: string
-  bookingId?: string
-}
+export type BookingWorkflowResult = { ok: boolean; error?: string; bookingId?: string }
 
 const requestIdSchema = z.string().uuid('बुकिंग रिक्वेस्ट की पहचान अमान्य है')
 const priceSchema = z.number({ invalid_type_error: 'कुल कीमत अंकों में डालें' }).finite().min(0, 'कुल कीमत 0 से कम नहीं हो सकती').max(100000000, 'कुल कीमत बहुत ज़्यादा है')
@@ -42,10 +38,6 @@ export async function convertBookingRequest(input: unknown): Promise<BookingWork
   const { supabase, error: authError } = await requireAdmin()
   if (authError || !supabase) return { ok: false, error: authError ?? 'Unavailable' }
 
-  // The live database migration is deliberately the source of truth for this
-  // RPC. The generated local type file predates the function, so keep this
-  // narrow escape hatch local to the call rather than weakening the whole
-  // Supabase client type.
   const rpc = supabase.rpc.bind(supabase) as unknown as (
     name: string,
     args: Record<string, unknown>,
@@ -73,9 +65,17 @@ export async function updateBookingRequestStatus(input: unknown): Promise<Bookin
   const { supabase, error: authError } = await requireAdmin()
   if (authError || !supabase) return { ok: false, error: authError ?? 'Unavailable' }
 
+  // The generated schema file is older than the live booking_status enum, so
+  // keep this cast narrow to the single update payload instead of weakening
+  // the entire Supabase client.
+  const patch = {
+    status: parsed.data.status,
+    updated_at: new Date().toISOString(),
+  } as never
+
   const { data, error } = await supabase
     .from('booking_requests')
-    .update({ status: parsed.data.status, updated_at: new Date().toISOString() })
+    .update(patch)
     .eq('id', parsed.data.requestId)
     .select('id')
     .maybeSingle()
