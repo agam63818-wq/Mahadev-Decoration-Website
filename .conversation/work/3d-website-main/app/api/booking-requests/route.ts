@@ -24,16 +24,12 @@ const requestSchema = z.object({
   selectedPortfolioItemId: z.string().uuid().optional(),
   selectedServiceId: z.string().uuid().optional(),
   selectedPackageId: z.string().uuid().optional(),
-  // Legacy client fields are accepted for compatibility but never trusted for pricing.
   selectedVariantLabel: z.string().max(120).optional(),
   selectedPrice: z.coerce.number().nonnegative().optional(),
 })
 
 function supabaseConfig() {
-  return {
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    key: process.env.SUPABASE_SERVICE_ROLE_KEY,
-  }
+  return { url: process.env.NEXT_PUBLIC_SUPABASE_URL, key: process.env.SUPABASE_SERVICE_ROLE_KEY }
 }
 
 interface LookSnapshot {
@@ -43,17 +39,8 @@ interface LookSnapshot {
   itemTitle: string | null
   portfolioItemId: string | null
 }
-
-interface ServiceSnapshot {
-  name: string | null
-  startingPrice: number | null
-}
-
-interface PackageSnapshot {
-  name: string | null
-  startingPrice: number | null
-  priceMax: number | null
-}
+interface ServiceSnapshot { name: string | null; startingPrice: number | null }
+interface PackageSnapshot { name: string | null; startingPrice: number | null; priceMax: number | null }
 
 async function loadJson<T>(url: string, key: string, endpoint: string): Promise<T | null> {
   try {
@@ -71,19 +58,9 @@ async function loadJson<T>(url: string, key: string, endpoint: string): Promise<
 
 async function loadLookSnapshot(url: string, key: string, mediaId: string): Promise<LookSnapshot | null> {
   const row = await loadJson<{
-    id: string
-    url: string | null
-    variant_label: string | null
-    price: number | string | null
-    is_bookable: boolean
-    portfolio_item_id: string
-    portfolio_items: { title: string | null } | null
-  }>(
-    url,
-    key,
-    `portfolio_media?id=eq.${encodeURIComponent(mediaId)}&select=id,url,variant_label,price,is_bookable,portfolio_item_id,portfolio_items(title)&limit=1`,
-  )
-
+    id: string; url: string | null; variant_label: string | null; price: number | string | null
+    is_bookable: boolean; portfolio_item_id: string; portfolio_items: { title: string | null } | null
+  }>(url, key, `portfolio_media?id=eq.${encodeURIComponent(mediaId)}&select=id,url,variant_label,price,is_bookable,portfolio_item_id,portfolio_items(title)&limit=1`)
   if (!row || row.is_bookable === false) return null
   const price = row.price == null ? null : Number(row.price)
   return {
@@ -96,27 +73,14 @@ async function loadLookSnapshot(url: string, key: string, mediaId: string): Prom
 }
 
 async function loadServiceSnapshot(url: string, key: string, serviceId: string): Promise<ServiceSnapshot | null> {
-  const row = await loadJson<{ name: string; starting_price: number | string | null; is_active: boolean }>(
-    url,
-    key,
-    `services?id=eq.${encodeURIComponent(serviceId)}&select=name,starting_price,is_active&limit=1`,
-  )
+  const row = await loadJson<{ name: string; starting_price: number | string | null; is_active: boolean }>(url, key, `services?id=eq.${encodeURIComponent(serviceId)}&select=name,starting_price,is_active&limit=1`)
   if (!row || row.is_active === false) return null
   const price = row.starting_price == null ? null : Number(row.starting_price)
   return { name: row.name, startingPrice: Number.isFinite(price) ? price : null }
 }
 
 async function loadPackageSnapshot(url: string, key: string, packageId: string): Promise<PackageSnapshot | null> {
-  const row = await loadJson<{
-    name: string
-    starting_price: number | string | null
-    price_max: number | string | null
-    is_active: boolean
-  }>(
-    url,
-    key,
-    `packages?id=eq.${encodeURIComponent(packageId)}&select=name,starting_price,price_max,is_active&limit=1`,
-  )
+  const row = await loadJson<{ name: string; starting_price: number | string | null; price_max: number | string | null; is_active: boolean }>(url, key, `packages?id=eq.${encodeURIComponent(packageId)}&select=name,starting_price,price_max,is_active&limit=1`)
   if (!row || row.is_active === false) return null
   const startingPrice = row.starting_price == null ? null : Number(row.starting_price)
   const priceMax = row.price_max == null ? null : Number(row.price_max)
@@ -127,33 +91,27 @@ async function loadPackageSnapshot(url: string, key: string, packageId: string):
   }
 }
 
+async function loadAdminProfileId(url: string, key: string): Promise<string | null> {
+  const row = await loadJson<{ id: string }>(url, key, 'profiles?role=eq.admin&select=id&order=created_at.asc&limit=1')
+  return row?.id ?? null
+}
+
 async function createBookingNotification(
   url: string,
   key: string,
   input: {
-    bookingRequestId: string
-    reference: string
-    contactName: string
-    eventType: string
-    eventDate: string
-    price: number | null
-    imageUrl: string | null
-    lookTitle: string | null
+    bookingRequestId: string; profileId: string; reference: string; contactName: string
+    eventType: string; eventDate: string; price: number | null; imageUrl: string | null; lookTitle: string | null
   },
 ) {
   const priceText = input.price != null ? ` · ₹${input.price.toLocaleString('en-IN')}` : ''
   const lookText = input.lookTitle ? ` · ${input.lookTitle}` : ''
-
   try {
     const response = await fetch(`${url}/rest/v1/notifications`, {
       method: 'POST',
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-        'Content-Type': 'application/json',
-        Prefer: 'return=minimal',
-      },
+      headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body: JSON.stringify({
+        profile_id: input.profileId,
         type: 'booking_request',
         booking_request_id: input.bookingRequestId,
         title: `नई बुकिंग रिक्वेस्ट — ${input.contactName}`,
@@ -162,7 +120,6 @@ async function createBookingNotification(
         is_read: false,
       }),
     })
-
     if (response.ok) return true
     const body = await response.text().catch(() => '')
     if (response.status === 409 || body.includes('23505')) return true
@@ -175,45 +132,30 @@ async function createBookingNotification(
 
 export async function POST(request: Request) {
   const parsed = requestSchema.safeParse(await request.json().catch(() => null))
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'कृपया सभी जरूरी जानकारी सही तरीके से भरें।', issues: parsed.error.flatten() },
-      { status: 400 },
-    )
-  }
+  if (!parsed.success) return NextResponse.json({ error: 'कृपया सभी जरूरी जानकारी सही तरीके से भरें।', issues: parsed.error.flatten() }, { status: 400 })
 
   const { url, key } = supabaseConfig()
-  if (!url || !key) {
-    return NextResponse.json({ error: 'Booking backend अभी configure नहीं है।' }, { status: 503 })
-  }
+  if (!url || !key) return NextResponse.json({ error: 'Booking backend अभी configure नहीं है।' }, { status: 503 })
 
   const mediaId = parsed.data.selectedPortfolioMediaId ?? null
   const serviceId = parsed.data.selectedServiceId ?? null
   const packageId = parsed.data.selectedPackageId ?? null
 
-  // All catalog facts are resolved server-side. Browser-supplied price/label values are ignored.
   const [look, service, pkg] = await Promise.all([
     mediaId ? loadLookSnapshot(url, key, mediaId) : Promise.resolve(null),
     serviceId ? loadServiceSnapshot(url, key, serviceId) : Promise.resolve(null),
     packageId ? loadPackageSnapshot(url, key, packageId) : Promise.resolve(null),
   ])
 
-  if (mediaId && !look) {
-    return NextResponse.json({ error: 'चुना हुआ डिज़ाइन अब उपलब्ध नहीं है। कृपया दूसरा डिज़ाइन चुनें।' }, { status: 409 })
-  }
-  if (serviceId && !service) {
-    return NextResponse.json({ error: 'चुनी हुई सेवा अब उपलब्ध नहीं है। कृपया दोबारा चुनें।' }, { status: 409 })
-  }
-  if (packageId && !pkg) {
-    return NextResponse.json({ error: 'चुना हुआ पैकेज अब उपलब्ध नहीं है। कृपया दोबारा चुनें।' }, { status: 409 })
-  }
+  if (mediaId && !look) return NextResponse.json({ error: 'चुना हुआ डिज़ाइन अब उपलब्ध नहीं है। कृपया दूसरा डिज़ाइन चुनें।' }, { status: 409 })
+  if (serviceId && !service) return NextResponse.json({ error: 'चुनी हुई सेवा अब उपलब्ध नहीं है। कृपया दोबारा चुनें।' }, { status: 409 })
+  if (packageId && !pkg) return NextResponse.json({ error: 'चुना हुआ पैकेज अब उपलब्ध नहीं है। कृपया दोबारा चुनें।' }, { status: 409 })
 
   const reference = `MD-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`
   const customBudget = parsed.data.customBudget?.trim() ? Number(parsed.data.customBudget) : null
 
   const payload = {
     reference_number: reference,
-    // Keep both the new admin-facing fields and the legacy columns populated.
     customer_name: parsed.data.name,
     phone: parsed.data.phone,
     whatsapp: parsed.data.whatsapp || null,
@@ -256,12 +198,7 @@ export async function POST(request: Request) {
 
   const response = await fetch(`${url}/rest/v1/booking_requests`, {
     method: 'POST',
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-    },
+    headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
     body: JSON.stringify(payload),
   })
 
@@ -275,16 +212,22 @@ export async function POST(request: Request) {
   const bookingRequestId = created?.[0]?.id ?? null
 
   if (bookingRequestId) {
-    await createBookingNotification(url, key, {
-      bookingRequestId,
-      reference,
-      contactName: parsed.data.name,
-      eventType: parsed.data.eventType,
-      eventDate: parsed.data.eventDate,
-      price: look?.price ?? pkg?.startingPrice ?? service?.startingPrice ?? null,
-      imageUrl: look?.imageUrl ?? null,
-      lookTitle: look?.itemTitle ?? null,
-    })
+    const adminProfileId = await loadAdminProfileId(url, key)
+    if (adminProfileId) {
+      await createBookingNotification(url, key, {
+        bookingRequestId,
+        profileId: adminProfileId,
+        reference,
+        contactName: parsed.data.name,
+        eventType: parsed.data.eventType,
+        eventDate: parsed.data.eventDate,
+        price: look?.price ?? pkg?.startingPrice ?? service?.startingPrice ?? null,
+        imageUrl: look?.imageUrl ?? null,
+        lookTitle: look?.itemTitle ?? null,
+      })
+    } else {
+      console.error('[booking-requests] no admin profile available for notification')
+    }
   }
 
   return NextResponse.json({ reference })
