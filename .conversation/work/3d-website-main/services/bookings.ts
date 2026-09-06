@@ -160,12 +160,19 @@ function joinLocation(row: BookingRequestRow): string {
 
 /**
  * Loads booking requests for the admin console together with the specific
- * priced look each customer selected, in a single round trip.
+ * priced look each customer selected.
  *
  * §24: reports `failed` separately from an empty list. The previous version
  * returned [] for BOTH a broken query and a genuinely empty table, so a
  * network blip rendered "अभी कोई बुकिंग रिक्वेस्ट नहीं" — which for a
  * booking list is a genuinely alarming lie.
+ *
+ * IMPORTANT: the relationship must be named using the actual foreign-table
+ * relationship, not the UUID column name. `selected_portfolio_media_id` is a
+ * scalar UUID, while `portfolio_media` is the related table. The old select
+ * expression used `portfolio_media:selected_portfolio_media_id (...)`, which
+ * makes PostgREST reject the query and the admin page correctly shows its
+ * "load failed" state even though the booking row exists.
  */
 export async function getAdminBookingRequests(): Promise<{
   bookings: AdminBookingRequest[]
@@ -177,7 +184,7 @@ export async function getAdminBookingRequests(): Promise<{
   const { data, error } = await supabase
     .from('booking_requests')
     .select(
-      `${REQUEST_COLUMNS}, portfolio_media:selected_portfolio_media_id (id, url, alt_text, variant_label, price, portfolio_item_id, portfolio_items(id, title, slug))`
+      `${REQUEST_COLUMNS}, portfolio_media:portfolio_media!booking_requests_selected_portfolio_media_id_fkey (id, url, alt_text, variant_label, price, portfolio_item_id, portfolio_items(id, title, slug))`,
     )
     .order('created_at', { ascending: false })
     .limit(200)
