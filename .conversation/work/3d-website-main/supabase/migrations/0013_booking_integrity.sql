@@ -7,8 +7,8 @@
 -- The booking_status_history table is already part of the live schema:
 --   id, booking_id, status, actor_id, note, created_at
 -- Record the initial status on INSERT and every actual status transition on
--- UPDATE. This lives in the database so admin/server/client code cannot
--- accidentally forget the audit entry.
+-- UPDATE. This lives in the database so application code cannot accidentally
+-- forget the audit entry.
 create or replace function public.record_booking_status_history()
 returns trigger
 language plpgsql
@@ -46,29 +46,20 @@ execute function public.record_booking_status_history();
 create or replace function public.prevent_active_booking_date_conflict()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
 begin
   if new.event_date is null then
     return new;
   end if;
 
-  if new.status in (
-    'confirmed',
-    'in_preparation',
-    'team_assigned',
-    'in_progress'
-  )::public.booking_status[] then
+  if new.status in ('confirmed', 'in_preparation', 'team_assigned', 'in_progress') then
     if exists (
       select 1
       from public.bookings b
       where b.event_date = new.event_date
         and b.id <> new.id
-        and b.status in (
-          'confirmed',
-          'in_preparation',
-          'team_assigned',
-          'in_progress'
-        )::public.booking_status[]
+        and b.status in ('confirmed', 'in_preparation', 'team_assigned', 'in_progress')
     ) then
       raise exception 'booking_date_conflict'
         using errcode = '23P01',
@@ -91,7 +82,6 @@ execute function public.prevent_active_booking_date_conflict();
 create index if not exists bookings_active_date_lookup_idx
   on public.bookings (event_date, status);
 
--- Keep the trigger functions callable only through table triggers / trusted
--- database execution paths.
+-- Keep trigger functions callable only through trusted database execution.
 revoke all on function public.record_booking_status_history() from public;
 revoke all on function public.prevent_active_booking_date_conflict() from public;
