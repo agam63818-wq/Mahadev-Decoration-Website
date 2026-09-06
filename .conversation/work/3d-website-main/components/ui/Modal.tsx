@@ -52,23 +52,25 @@ export function Modal({ open, onClose, title, children, className = '' }: ModalP
             role="dialog"
             aria-modal="true"
             aria-labelledby={title ? 'modal-title' : undefined}
-            className={`relative w-full max-w-lg bg-bg-void border border-gold/20 rounded-2xl shadow-card-lift p-6 animate-in fade-in zoom-in-95 duration-200 ${className}`}
+            className={`relative flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-gold/20 bg-bg-void p-6 shadow-card-lift animate-in fade-in zoom-in-95 duration-200 ${className}`}
           >
             {title && (
-              <div className="flex items-center justify-between mb-5">
-                <h2 id="modal-title" className="text-xl font-display font-semibold text-gold font-devanagari">
+              <div className="mb-5 flex flex-shrink-0 items-center justify-between">
+                <h2 id="modal-title" className="font-display font-devanagari text-xl font-semibold text-gold">
                   {title}
                 </h2>
                 <button
                   onClick={onClose}
-                  className="p-1.5 rounded-lg hover:bg-gold/10 text-text-muted hover:text-gold transition-colors"
+                  className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-gold/10 hover:text-gold"
                   aria-label="बंद करें"
                 >
                   <X size={20} />
                 </button>
               </div>
             )}
-            {children}
+            <div className="min-h-0 flex-1 overflow-y-auto pr-1 overscroll-contain">
+              {children}
+            </div>
           </div>
         </div>
       )}
