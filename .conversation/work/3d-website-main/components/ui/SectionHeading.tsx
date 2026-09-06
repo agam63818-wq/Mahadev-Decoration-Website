@@ -33,7 +33,7 @@ export function SectionHeading({
   }[align]
 
   return (
-    <div className={cn('flex flex-col gap-3 w-full', alignClass, className)}>
+    <div className={cn('section-heading flex flex-col gap-3 w-full', alignClass, className)}>
       {/* Premium flourish divider */}
       {showFlourish && <SectionFlourish align={align} />}
 
