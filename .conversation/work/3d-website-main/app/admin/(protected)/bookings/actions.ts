@@ -41,7 +41,7 @@ export async function convertBookingRequest(input: unknown): Promise<BookingWork
   const rpc = supabase.rpc.bind(supabase) as unknown as (
     name: string,
     args: Record<string, unknown>,
-  ) => Promise<{ data: unknown; error: { message: string } | null }>
+  ) => Promise<{ data: unknown; error: { message: string; code?: string; hint?: string } | null }>
 
   const { data, error } = await rpc('convert_booking_request_to_booking', {
     p_request_id: parsed.data.requestId,
@@ -50,6 +50,9 @@ export async function convertBookingRequest(input: unknown): Promise<BookingWork
 
   if (error) {
     console.error('[admin/bookings] conversion failed:', error.message)
+    if (error.code === '23P01' || error.message === 'booking_date_conflict') {
+      return { ok: false, error: 'इस तारीख पर पहले से एक कन्फर्म/सक्रिय बुकिंग है। दूसरी बुकिंग कन्फर्म करने से पहले तारीख बदलें या पुरानी बुकिंग की स्थिति जाँचें।' }
+    }
     return { ok: false, error: 'बुकिंग बन नहीं सकी। कृपया फिर कोशिश करें।' }
   }
 
@@ -65,9 +68,6 @@ export async function updateBookingRequestStatus(input: unknown): Promise<Bookin
   const { supabase, error: authError } = await requireAdmin()
   if (authError || !supabase) return { ok: false, error: authError ?? 'Unavailable' }
 
-  // The generated schema file is older than the live booking_status enum, so
-  // keep this cast narrow to the single update payload instead of weakening
-  // the entire Supabase client.
   const patch = {
     status: parsed.data.status,
     updated_at: new Date().toISOString(),
