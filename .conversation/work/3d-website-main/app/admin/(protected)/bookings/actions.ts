@@ -60,7 +60,8 @@ export async function convertBookingRequest(input: unknown): Promise<BookingWork
   return { ok: true, bookingId: String(data) }
 }
 
-/** Change only the request status; it never rewrites customer/event data. */
+/** Update the inbound request and, when it has already been converted,
+ * keep the real booking status in sync with it. */
 export async function updateBookingRequestStatus(input: unknown): Promise<BookingWorkflowResult> {
   const parsed = z.object({ requestId: requestIdSchema, status: statusSchema }).safeParse(input)
   if (!parsed.success) return { ok: false, error: parsed.error.errors[0]?.message ?? 'अमान्य स्थिति' }
@@ -81,10 +82,27 @@ export async function updateBookingRequestStatus(input: unknown): Promise<Bookin
     .maybeSingle()
 
   if (error) {
-    console.error('[admin/bookings] status update failed:', error.message)
+    console.error('[admin/bookings] request status update failed:', error.message)
     return { ok: false, error: 'स्थिति अपडेट नहीं हो सकी। कृपया फिर कोशिश करें।' }
   }
   if (!data) return { ok: false, error: 'बुकिंग रिक्वेस्ट नहीं मिली।' }
+
+  // PR #12 creates the real booking with booking_request_id. If it exists,
+  // mirror the workflow status there too. The cast is intentionally narrow
+  // because the generated client types lag behind the live schema.
+  const bookingPatch = {
+    status: parsed.data.status,
+    updated_at: new Date().toISOString(),
+  } as never
+  const { error: bookingError } = await supabase
+    .from('bookings')
+    .update(bookingPatch)
+    .eq('booking_request_id', parsed.data.requestId)
+
+  if (bookingError) {
+    console.error('[admin/bookings] converted booking status sync failed:', bookingError.message)
+    return { ok: false, error: 'रिक्वेस्ट अपडेट हो गई, लेकिन वास्तविक बुकिंग की स्थिति अपडेट नहीं हो सकी।' }
+  }
 
   revalidateBookingWorkflow()
   return { ok: true, bookingId: parsed.data.requestId }
