@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { cn } from '@/utils/cn'
-import { Counter } from '@/components/motion'
+import { Counter, useQuietMotion } from '@/components/motion'
 
 interface StatBadgeProps {
   stat: {
@@ -30,15 +30,17 @@ const variantStyles: Record<NonNullable<StatBadgeProps['variant']>, string> = {
 }
 
 export function StatBadge({ stat, variant = 'bar', index = 0, className }: StatBadgeProps) {
+  const quiet = useQuietMotion()
   const delay = index * 0.1
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={quiet ? false : { opacity: 0, y: 16 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-50px' }}
       transition={{ duration: 0.5, delay, ease: 'easeOut' }}
-      whileHover={{ y: -3 }}
+      whileHover={quiet ? undefined : { y: -3 }}
+      data-stat-variant={variant}
       className={cn('relative', variantStyles[variant], className)}
     >
       {/* Icon */}

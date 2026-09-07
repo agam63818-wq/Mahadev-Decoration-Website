@@ -25,12 +25,12 @@ export default async function AboutPage() {
   ])
 
   return (
-    <div className="min-h-screen bg-bg-void pt-20">
+    <div className="about-page min-h-screen bg-bg-void pt-20">
       {/* Hero */}
-      <div className="bg-gradient-to-b from-bg-purple to-bg-void py-20 px-4">
+      <div className="about-masthead bg-gradient-to-b from-bg-purple to-bg-void py-20 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <SectionFlourish className="mb-4" />
-          <h1 className="text-4xl md:text-6xl font-bold font-devanagari bg-gradient-to-r from-champagne via-gold to-champagne bg-clip-text text-transparent mb-4">
+          <h1 className="public-page-title font-devanagari text-champagne mb-4">
             हमारे बारे में
           </h1>
           <p className="text-text-muted text-lg font-devanagari leading-relaxed max-w-2xl mx-auto">

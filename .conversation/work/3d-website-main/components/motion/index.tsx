@@ -31,9 +31,16 @@ import {
   useTransform,
   type Variants,
 } from 'framer-motion'
+import { usePathname } from 'next/navigation'
 import { cn } from '@/utils/cn'
 
 export const EASE_PREMIUM = [0.16, 1, 0.3, 1] as const
+// Visual policy only; never used for authentication or route admission.
+export function useQuietMotion(): boolean {
+  const pathname = usePathname() ?? ''
+  return !pathname.startsWith('/admin')
+}
+
 export const EASE_OUT = [0.25, 0.46, 0.45, 0.94] as const
 
 /** Coarse-pointer / narrow screens get lighter effects. */
@@ -74,10 +81,11 @@ export function Reveal({
   as = 'div',
   style,
 }: RevealProps) {
+  const quiet = useQuietMotion()
   const reduce = useReducedMotion()
   const Comp = motion[as] as typeof motion.div
 
-  if (reduce) {
+  if (quiet || reduce) {
     const Plain = as as ElementType
     return (
       <Plain className={className} style={style}>
@@ -120,8 +128,14 @@ export function Stagger({
   as = 'div',
   style,
 }: StaggerProps) {
+  const quiet = useQuietMotion()
   const reduce = useReducedMotion()
   const Comp = motion[as] as typeof motion.div
+
+  if (quiet) {
+    const Plain = as as ElementType
+    return <Plain className={className} style={style}>{children}</Plain>
+  }
 
   const variants: Variants = {
     hidden: {},
@@ -151,8 +165,14 @@ interface StaggerItemProps {
 }
 
 export function StaggerItem({ children, className, y = 22, as = 'div', style }: StaggerItemProps) {
+  const quiet = useQuietMotion()
   const reduce = useReducedMotion()
   const Comp = motion[as] as typeof motion.div
+
+  if (quiet) {
+    const Plain = as as ElementType
+    return <Plain className={className} style={style}>{children}</Plain>
+  }
 
   const variants: Variants = reduce
     ? { hidden: { opacity: 1 }, show: { opacity: 1 } }
@@ -198,11 +218,12 @@ export function TextReveal({
   immediate = false,
   wordClassName,
 }: TextRevealProps) {
+  const quiet = useQuietMotion()
   const reduce = useReducedMotion()
   const words = text.split(' ')
   const Wrapper = motion[as] as typeof motion.h2
 
-  if (reduce) {
+  if (quiet || reduce) {
     const Plain = as as ElementType
     return (
       <Plain id={id} className={className}>
@@ -268,6 +289,7 @@ export function Counter({
   className?: string
   duration?: number
 }) {
+  const quiet = useQuietMotion()
   const reduce = useReducedMotion()
   const ref = useRef<HTMLSpanElement>(null)
   const inView = useInView(ref, { once: true, margin: '-40px 0px' })
@@ -275,7 +297,7 @@ export function Counter({
   const [display, setDisplay] = useState(() => (match ? `${match[1]}0${match[3]}` : value))
 
   useEffect(() => {
-    if (!match) return
+    if (quiet || !match) return
     if (reduce || !inView) {
       if (reduce) setDisplay(value)
       return
@@ -300,11 +322,11 @@ export function Counter({
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inView, reduce, value, duration])
+  }, [inView, reduce, value, duration, quiet])
 
   return (
     <span ref={ref} className={cn('tabular-nums', className)}>
-      {display}
+      {quiet ? value : display}
     </span>
   )
 }
@@ -322,6 +344,7 @@ export function Magnetic({
   strength?: number
   radius?: number
 }) {
+  const quiet = useQuietMotion()
   const reduce = useReducedMotion()
   const desktop = useIsDesktopPointer()
   const ref = useRef<HTMLDivElement>(null)
@@ -330,7 +353,7 @@ export function Magnetic({
   const sx = useSpring(x, { stiffness: 220, damping: 18, mass: 0.4 })
   const sy = useSpring(y, { stiffness: 220, damping: 18, mass: 0.4 })
 
-  const enabled = desktop && !reduce
+  const enabled = desktop && !reduce && !quiet
 
   const onMove = (e: MouseEvent<HTMLDivElement>) => {
     if (!enabled || !ref.current) return
@@ -383,6 +406,7 @@ export function TiltCard({
   style?: CSSProperties
   onClick?: () => void
 }) {
+  const quiet = useQuietMotion()
   const reduce = useReducedMotion()
   const desktop = useIsDesktopPointer()
   const ref = useRef<HTMLDivElement>(null)
@@ -398,7 +422,7 @@ export function TiltCard({
       `radial-gradient(400px circle at ${gx}% ${gy}%, rgba(212,175,55,0.14), transparent 60%)`,
   )
 
-  const enabled = desktop && !reduce
+  const enabled = desktop && !reduce && !quiet
 
   const onMove = (e: MouseEvent<HTMLDivElement>) => {
     if (!enabled || !ref.current) return
@@ -421,7 +445,7 @@ export function TiltCard({
       onMouseMove={onMove}
       onMouseLeave={onLeave}
       onClick={onClick}
-      whileHover={reduce ? undefined : { y: -lift }}
+      whileHover={quiet || reduce ? undefined : { y: -lift }}
       transition={{ duration: 0.25, ease: EASE_OUT }}
       style={{
         ...style,
@@ -446,10 +470,11 @@ export function TiltCard({
 // ─── Section divider glow line ────────────────────────────────────────────────
 
 export function DrawLine({ className }: { className?: string }) {
+  const quiet = useQuietMotion()
   const reduce = useReducedMotion()
   return (
     <motion.div
-      initial={reduce ? false : { scaleX: 0 }}
+      initial={quiet || reduce ? false : { scaleX: 0 }}
       whileInView={{ scaleX: 1 }}
       viewport={{ once: true }}
       transition={{ duration: 1, ease: EASE_PREMIUM }}

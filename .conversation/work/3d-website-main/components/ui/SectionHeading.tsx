@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion'
 import { cn } from '@/utils/cn'
 import { SectionFlourish } from './SectionFlourish'
-import { EASE_PREMIUM, TextReveal } from '@/components/motion'
+import { EASE_PREMIUM, TextReveal, useQuietMotion } from '@/components/motion'
 
 interface SectionHeadingProps {
   title: string
@@ -26,6 +26,7 @@ export function SectionHeading({
   id,
   subtitleClassName,
 }: SectionHeadingProps) {
+  const quiet = useQuietMotion()
   const alignClass = {
     left: 'items-start text-left',
     center: 'items-center text-center',
@@ -53,7 +54,7 @@ export function SectionHeading({
       {/* Subtitle — muted but elegant */}
       {subtitle && (
         <motion.p
-          initial={{ opacity: 0, y: 16 }}
+          initial={quiet ? false : { opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-50px' }}
           transition={{ duration: 0.7, delay: 0.25, ease: EASE_PREMIUM }}

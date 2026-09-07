@@ -31,7 +31,7 @@ function TeamCard({ member, index }: { member: TeamMember; index: number }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={false}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
@@ -72,12 +72,12 @@ function TeamCard({ member, index }: { member: TeamMember; index: number }) {
 
 export function AboutClient({ teamMembers, teamError, stats, business }: AboutClientProps) {
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-20">
+    <div className="about-content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-20">
       {/* Brand story */}
       <section aria-labelledby="story-heading">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div className="about-story-grid grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <motion.div
-            initial={{ opacity: 0, x: -24 }}
+            initial={false}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
@@ -103,16 +103,16 @@ export function AboutClient({ teamMembers, teamError, stats, business }: AboutCl
 
           {/* Stats */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={false}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="grid grid-cols-2 gap-4"
+            className="about-stat-grid grid grid-cols-2 gap-4"
           >
             {stats.map((stat, i) => (
               <div
                 key={stat.id}
-                className="bg-bg-purple border border-gold/20 rounded-2xl p-6 text-center hover:border-gold/40 transition-colors"
+                className="about-stat-cell min-w-0 text-center"
               >
                 <StatBadge stat={stat} variant="bar" index={i} />
               </div>
@@ -133,7 +133,7 @@ export function AboutClient({ teamMembers, teamError, stats, business }: AboutCl
           ].map((value, i) => (
             <motion.div
               key={value.title}
-              initial={{ opacity: 0, y: 20 }}
+              initial={false}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.1 }}

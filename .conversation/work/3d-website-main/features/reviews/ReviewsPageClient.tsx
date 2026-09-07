@@ -131,7 +131,7 @@ export function ReviewsPageClient({ reviews }: ReviewsPageClientProps) {
           {filtered.map((review, i) => (
             <motion.article
               key={review.id}
-              initial={{ opacity: 0, y: 20 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: (i % 6) * 0.06 }}
               className="bg-bg-purple border border-gold/10 rounded-2xl p-6 hover:border-gold/30 transition-colors"

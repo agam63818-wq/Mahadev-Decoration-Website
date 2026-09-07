@@ -14,7 +14,7 @@ function StarRating({ rating }: { rating: number }) {
       {[1, 2, 3, 4, 5].map((star) => (
         <motion.span
           key={star}
-          initial={{ opacity: 0, scale: 0.4 }}
+          initial={false}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.35, delay: 0.3 + star * 0.07, type: 'spring', stiffness: 300, damping: 15 }}

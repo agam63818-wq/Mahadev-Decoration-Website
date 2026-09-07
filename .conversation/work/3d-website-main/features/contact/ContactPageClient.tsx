@@ -62,7 +62,7 @@ export function ContactPageClient({ business, areas }: ContactPageClientProps) {
         {/* Contact info */}
         <div className="space-y-6">
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
+            initial={false}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
           >
@@ -154,7 +154,7 @@ export function ContactPageClient({ business, areas }: ContactPageClientProps) {
 
         {/* Contact form */}
         <motion.div
-          initial={{ opacity: 0, x: 20 }}
+          initial={false}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
