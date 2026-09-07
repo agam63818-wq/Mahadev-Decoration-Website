@@ -108,7 +108,7 @@ function PackageCard({ pkg }: PackageCardProps) {
           {pkg.inclusions.slice(0, 6).map((item, i) => (
             <motion.li
               key={item}
-              initial={{ opacity: 0, x: -10 }}
+              initial={false}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: 0.25 + i * 0.06 }}

@@ -24,7 +24,7 @@ export function PackagesPageClient({ packages }: PackagesPageClientProps) {
       {packages.map((pkg, i) => (
         <motion.article
           key={pkg.id}
-          initial={{ opacity: 0, y: 24 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: (i % 3) * 0.08 }}
           className={`relative flex flex-col bg-bg-purple border rounded-2xl overflow-hidden transition-all duration-250 hover:shadow-card-lift ${
