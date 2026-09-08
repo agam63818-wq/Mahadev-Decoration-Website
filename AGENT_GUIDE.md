@@ -601,3 +601,14 @@ Before handing work back to the owner:
 ## 21. One-line orientation for a new agent
 
 **This is a Next.js + Supabase decoration-business site; the real app is under `.conversation/work/3d-website-main`, public UI lives in `app/` + `components/`, business data flows through `services/` into Supabase, and the protected `/admin` panel is the operational control center.**
+
+
+## Admin booking Web Push (2026-09-08)
+
+See `.conversation/work/3d-website-main/BOOKING_PUSH.md` before changing booking notifications. The existing `booking_requests` insert remains the source of truth. `0016_booking_push.sql` adds submission idempotency, protected `profiles`-owned devices, durable per-booking/per-device delivery state and a browser role-escalation guard. No push call or push-table trigger runs inside booking creation.
+
+Supabase Cron must POST the authenticated `/api/internal/booking-push` worker every minute. Configure Vault + Vercel keys using the guide; the PR does not provision live credentials/migrations/schedules. Reuse `getAdminUser()` and the existing Supabase admin client. Keep `lib/push/server.ts` server-only. Never expose the service-role/VAPID private/cron secrets.
+
+Only `public/sw.js` is registered. It displays native push and opens **`/admin/bookings?ref=<booking_requests.id>`**, reusing the existing detail modal, including records outside the first 200. Do not invent a competing detail route, service worker or booking insert. Settings has opt-in, test and disable controls; logout unsubscribes the current device. Database delivery is at-least-once with leases; browser event IDs/tags suppress repeat display, not an absolute exactly-once promise.
+
+Run the app's `pnpm test`, `pnpm type-check`, `pnpm lint`, `pnpm build`. Automated tests use a minimal PGlite fixture/mocked transports, not production. Live schema verification, real Android background/closed-app delivery and owner rollout remain explicit acceptance steps. Existing Next.js 14.2.29 vulnerability warning also needs a separately reviewed upgrade.

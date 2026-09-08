@@ -7,6 +7,8 @@ import { LogOut, Loader2, Menu, ExternalLink } from 'lucide-react'
 import { AdminSidebar } from '@/components/layout/AdminSidebar'
 import { NotificationBell } from '@/components/admin/NotificationBell'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { disablePushDevice } from '@/lib/push/actions'
+import { supportsPush, unsubscribeBrowserDevice } from '@/lib/push/browser'
 import type { UserRole } from '@/lib/auth/roles'
 
 interface AdminShellProps {
@@ -51,6 +53,17 @@ export function AdminShell({
   async function handleLogout() {
     setLoggingOut(true)
     try {
+      if (supportsPush()) {
+        try {
+          const registration = await navigator.serviceWorker.getRegistration('/')
+          const subscription = await registration?.pushManager.getSubscription()
+          if (subscription) await Promise.race([
+            disablePushDevice(subscription.endpoint),
+            new Promise((resolve) => setTimeout(resolve, 3000)),
+          ])
+        } catch { /* Do not prevent logout if the network is down. */ }
+        try { await unsubscribeBrowserDevice() } catch { /* OS/browser may already have removed it. */ }
+      }
       const supabase = getSupabaseBrowserClient()
       // Clears the auth cookies both locally and server-side, so the
       // middleware guard immediately stops letting this browser through.
@@ -113,6 +126,7 @@ export function AdminShell({
                * small screens so it can never overflow the header.
                */}
               <NotificationBell />
+              <Link href="/admin/settings#push-heading" className="text-xs text-gold hover:underline" title="इस डिवाइस के push notifications सेट करें">Push setup</Link>
               <Link
                 href="/"
                 target="_blank"

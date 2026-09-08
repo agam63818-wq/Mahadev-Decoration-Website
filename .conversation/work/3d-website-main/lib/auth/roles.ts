@@ -23,3 +23,14 @@ export interface SessionUser {
   role: UserRole
   displayName: string | null
 }
+
+/** Preserve trusted admin deep links across login, never an external redirect. */
+export function safeAdminRedirect(target?: string): string {
+  if (!target || !target.startsWith('/') || target.includes('\\')) return '/admin'
+  try {
+    const url = new URL(target, 'https://internal.invalid')
+    if (url.origin !== 'https://internal.invalid' || url.pathname === '/admin/login' ||
+      !(url.pathname === '/admin' || url.pathname.startsWith('/admin/'))) return '/admin'
+    return `${url.pathname}${url.search}${url.hash}`
+  } catch { return '/admin' }
+}

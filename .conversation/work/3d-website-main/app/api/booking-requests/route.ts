@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { createHash } from 'node:crypto'
 
 const requestSchema = z.object({
   eventType: z.string().min(1), eventDate: z.string().date(), city: z.string().min(2), area: z.string().min(2), address: z.string().min(8),
@@ -41,6 +42,24 @@ async function createBookingNotification(url:string,key:string,input:{bookingReq
 export async function POST(request:Request){
   const parsed=requestSchema.safeParse(await request.json().catch(()=>null));if(!parsed.success)return NextResponse.json({error:'कृपया सभी जरूरी जानकारी सही तरीके से भरें।',issues:parsed.error.flatten()},{status:400})
   const {url,key}=supabaseConfig();if(!url||!key)return NextResponse.json({error:'Booking backend अभी configure नहीं है।'},{status:503})
+  // Same key + same validated payload returns the canonical existing reference.
+  // The UNIQUE database index, not this lookup, arbitrates concurrent inserts.
+  const submissionKey = request.headers.get('idempotency-key')
+  if (submissionKey && !z.string().uuid().safeParse(submissionKey).success) {
+    return NextResponse.json({error:'Invalid idempotency key'},{status:400})
+  }
+  const submissionHash = createHash('sha256').update(JSON.stringify(parsed.data)).digest('hex')
+  async function replay() {
+    if (!submissionKey) return null // Backward-compatible for older deployed clients.
+    const existing = await loadJson<{reference_number:string;submission_hash:string}>(url!,key!,
+      `booking_requests?submission_key=eq.${encodeURIComponent(submissionKey)}&select=reference_number,submission_hash&limit=1`)
+    if (!existing) return null
+    return existing.submission_hash === submissionHash
+      ? NextResponse.json({reference:existing.reference_number})
+      : NextResponse.json({error:'यह submission key दूसरी जानकारी के लिए उपयोग हो चुकी है।'},{status:409})
+  }
+  const previous = await replay()
+  if (previous) return previous
   const mediaId=parsed.data.selectedPortfolioMediaId??null,serviceId=parsed.data.selectedServiceId??null,packageId=parsed.data.selectedPackageId??null
   const [look,service,pkg]=await Promise.all([mediaId?loadLookSnapshot(url,key,mediaId):Promise.resolve(null),serviceId?loadServiceSnapshot(url,key,serviceId):Promise.resolve(null),packageId?loadPackageSnapshot(url,key,packageId):Promise.resolve(null)])
   if(mediaId&&!look)return NextResponse.json({error:'चुना हुआ डिज़ाइन अब उपलब्ध नहीं है। कृपया दूसरा डिज़ाइन चुनें।'},{status:409})
@@ -48,8 +67,9 @@ export async function POST(request:Request){
   if(packageId&&!pkg)return NextResponse.json({error:'चुना हुआ पैकेज अब उपलब्ध नहीं है। कृपया दोबारा चुनें।'},{status:409})
   const reference=`MD-${new Date().getFullYear()}-${crypto.randomUUID().slice(0,8).toUpperCase()}`;const customBudget=parsed.data.customBudget?.trim()?Number(parsed.data.customBudget):null
   const snapshotPrice=look?.price??pkg?.startingPrice??service?.startingPrice??null
-  const payload={reference_number:reference,customer_name:parsed.data.name,phone:parsed.data.phone,whatsapp:parsed.data.whatsapp||null,email:parsed.data.email||null,event_type:parsed.data.eventType,event_date:parsed.data.eventDate,city:parsed.data.city,area:parsed.data.area,address:parsed.data.address,venue_name:parsed.data.venueName||null,budget:parsed.data.budget||null,budget_range:parsed.data.budget||null,custom_budget:customBudget!=null&&Number.isFinite(customBudget)?customBudget:null,style:parsed.data.style,decoration_styles:parsed.data.style,guest_count:parsed.data.guestCount,venue_type:parsed.data.venueType,setting:parsed.data.setting,is_indoor:parsed.data.setting==='Indoor',requirements:parsed.data.requirements,special_requirements:parsed.data.requirements,reference_files:parsed.data.referenceFiles??[],reference_images:parsed.data.referenceFiles??[],contact_name:parsed.data.name,contact_phone:parsed.data.phone,contact_whatsapp:parsed.data.whatsapp||null,contact_email:parsed.data.email||null,selected_portfolio_media_id:mediaId,selected_service_id:serviceId,selected_package_id:packageId,selected_variant_label_snapshot:look?.variantLabel??null,selected_price_snapshot:snapshotPrice,selected_image_url_snapshot:look?.imageUrl??null,selected_item_title_snapshot:look?.itemTitle??null,selected_service_name_snapshot:service?.name??null,selected_package_name_snapshot:pkg?.name??null,source_portfolio_item_id:look?.portfolioItemId??parsed.data.selectedPortfolioItemId??null,status:'pending_review'}
+  const payload={...(submissionKey?{submission_key:submissionKey,submission_hash:submissionHash}:{}),reference_number:reference,customer_name:parsed.data.name,phone:parsed.data.phone,whatsapp:parsed.data.whatsapp||null,email:parsed.data.email||null,event_type:parsed.data.eventType,event_date:parsed.data.eventDate,city:parsed.data.city,area:parsed.data.area,address:parsed.data.address,venue_name:parsed.data.venueName||null,budget:parsed.data.budget||null,budget_range:parsed.data.budget||null,custom_budget:customBudget!=null&&Number.isFinite(customBudget)?customBudget:null,style:parsed.data.style,decoration_styles:parsed.data.style,guest_count:parsed.data.guestCount,venue_type:parsed.data.venueType,setting:parsed.data.setting,is_indoor:parsed.data.setting==='Indoor',requirements:parsed.data.requirements,special_requirements:parsed.data.requirements,reference_files:parsed.data.referenceFiles??[],reference_images:parsed.data.referenceFiles??[],contact_name:parsed.data.name,contact_phone:parsed.data.phone,contact_whatsapp:parsed.data.whatsapp||null,contact_email:parsed.data.email||null,selected_portfolio_media_id:mediaId,selected_service_id:serviceId,selected_package_id:packageId,selected_variant_label_snapshot:look?.variantLabel??null,selected_price_snapshot:snapshotPrice,selected_image_url_snapshot:look?.imageUrl??null,selected_item_title_snapshot:look?.itemTitle??null,selected_service_name_snapshot:service?.name??null,selected_package_name_snapshot:pkg?.name??null,source_portfolio_item_id:look?.portfolioItemId??parsed.data.selectedPortfolioItemId??null,status:'pending_review'}
   const response=await fetch(`${url}/rest/v1/booking_requests`,{method:'POST',headers:{apikey:key,Authorization:`Bearer ${key}`,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify(payload)})
+  if(response.status===409){const duplicate=await replay();if(duplicate)return duplicate}
   if(!response.ok){console.error('[booking-requests] booking insert failed:',response.status,await response.text().catch(()=>''));return NextResponse.json({error:'रिक्वेस्ट सेव नहीं हो पाई। कृपया कुछ देर बाद दोबारा प्रयास करें।'},{status:502})}
   const created=await response.json().catch(()=>null) as Array<{id:string}>|null;const bookingRequestId=created?.[0]?.id??null
   // Customer directory is a separate operational record. Failure here must NOT reject an already-saved booking request.

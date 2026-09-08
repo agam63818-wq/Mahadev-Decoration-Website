@@ -100,11 +100,11 @@ export function BookingsManager({ bookings, loadFailed = false }: { bookings: Ad
 
   useEffect(() => {
     if (!refParam) { handledRef.current = null; setRefMissing(false); return }
-    if (handledRef.current === refParam) return
+    if (loadFailed || handledRef.current === refParam) return
     handledRef.current = refParam
     const match = bookings.find((b) => b.id === refParam)
-    if (match) { setRefMissing(false); setSelected(match); setNextStatus(match.status) } else setRefMissing(true)
-  }, [refParam, bookings])
+    if (match) { setRefMissing(false); setSelected(match); setNextStatus(match.status); setTotalPrice(match.selectedLook?.price != null ? String(match.selectedLook.price) : ''); setActionError(''); setActionSuccess('') } else { setSelected(null); setRefMissing(true) }
+  }, [refParam, bookings, loadFailed])
 
   const filterOptions = useMemo(() => ['all', ...Array.from(new Set(bookings.map((b) => b.status)))], [bookings])
   const filtered = useMemo(() => {

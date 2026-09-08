@@ -1,3 +1,5 @@
+import { getAdminUser } from '@/lib/auth/session'
+import { bookingIdSchema } from '@/lib/push/payload'
 import { getSupabaseReadClient } from '@/lib/supabase/server'
 import { portfolioPublicUrl } from '@/lib/supabase/config'
 import type { BookingRequestRow } from '@/lib/supabase/database.types'
@@ -63,10 +65,19 @@ function mapSelectedLook(row:Pick<BookingRequestRow,'selected_portfolio_media_id
 
 function joinLocation(row:BookingRequestRow){return [row.area,row.city].filter((p)=>p&&p.trim()).join(', ')}
 
-export async function getAdminBookingRequests():Promise<{bookings:AdminBookingRequest[];failed:boolean}>{
+export async function getAdminBookingRequests(requestId?:string):Promise<{bookings:AdminBookingRequest[];failed:boolean}>{
+  if (!await getAdminUser()) return {bookings:[],failed:true}
   const supabase=getSupabaseReadClient();if(!supabase)return{bookings:[],failed:true}
-  const {data,error}=await supabase.from('booking_requests').select(`${REQUEST_COLUMNS}, portfolio_media:portfolio_media!booking_requests_selected_portfolio_media_id_fkey (id, url, alt_text, variant_label, price, portfolio_item_id, portfolio_items(id, title))`).order('created_at',{ascending:false}).limit(200)
+  const columns = `${REQUEST_COLUMNS}, portfolio_media:portfolio_media!booking_requests_selected_portfolio_media_id_fkey (id, url, alt_text, variant_label, price, portfolio_item_id, portfolio_items(id, title))`
+  const {data,error}=await supabase.from('booking_requests').select(columns).order('created_at',{ascending:false}).limit(200)
   if(error||!data){if(error)console.error('[admin/bookings] load failed:',error.message);return{bookings:[],failed:true}}
   const rows=data as unknown as Array<BookingRequestRow&{portfolio_media:MediaJoin|null}>
+  // A notification may reference a record older than the first 200 rows.
+  // Load that exact record, using the same mapping/detail UI, not a parallel page.
+  if (requestId && bookingIdSchema.safeParse(requestId).success && !rows.some(row=>row.id===requestId)) {
+    const detail = await supabase.from('booking_requests').select(columns).eq('id',requestId).maybeSingle()
+    if (detail.error) return {bookings:[],failed:true}
+    if (detail.data) rows.push(detail.data as unknown as BookingRequestRow&{portfolio_media:MediaJoin|null})
+  }
   return {failed:false,bookings:rows.map(row=>({id:row.id,reference:row.reference_number??row.id.slice(0,8).toUpperCase(),status:row.status??'pending_review',eventType:row.event_type??'—',eventDate:row.event_date??'',location:joinLocation(row)||(row.address??''),venueName:row.venue_name??'',budget:row.budget??(row.custom_budget!=null?`₹${row.custom_budget}`:''),guestCount:row.guest_count,venueType:row.venue_type??'',setting:row.setting??'',style:Array.isArray(row.style)?row.style:[],requirements:row.requirements??'',contactName:row.contact_name??'नाम नहीं दिया',contactPhone:row.contact_phone??'',contactWhatsapp:row.contact_whatsapp??'',contactEmail:row.contact_email,createdAt:row.created_at,selectedLook:mapSelectedLook(row,row.portfolio_media??null)}))}
 }
