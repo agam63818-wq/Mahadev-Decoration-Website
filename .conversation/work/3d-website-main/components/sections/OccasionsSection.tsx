@@ -33,7 +33,7 @@ function OccasionCard({ occasion, index }: OccasionCardProps) {
         maxTilt={0}
         lift={2}
         className={[
-          'h-full flex flex-col overflow-hidden rounded-lg cursor-pointer',
+          'occasion-card h-full flex flex-col overflow-hidden rounded-lg cursor-pointer',
           'bg-gradient-to-br from-bg-purple to-bg-rich',
           'border border-gold/10 hover:border-gold/40',
           'shadow-none',
@@ -43,7 +43,7 @@ function OccasionCard({ occasion, index }: OccasionCardProps) {
       >
         <article className="flex h-full flex-col">
           {/* Image */}
-          <div className="relative aspect-[4/3] overflow-hidden bg-bg-void">
+          <div className="occasion-photo relative aspect-[4/3] overflow-hidden bg-bg-void">
             <Image
               src={imageSrc}
               alt={occasion.imageAlt || occasion.name}
@@ -67,7 +67,7 @@ function OccasionCard({ occasion, index }: OccasionCardProps) {
             </div>
 
             {/* Title on image */}
-            <h3 className="absolute bottom-3 left-3 right-3 text-champagne font-bold text-base md:text-lg font-devanagari leading-snug drop-shadow-lg group-hover:text-gold-bright transition-colors duration-300">
+            <h3 className="occasion-name absolute bottom-3 left-3 right-3 text-champagne font-bold text-base md:text-lg font-devanagari leading-snug drop-shadow-lg group-hover:text-gold-bright transition-colors duration-300">
               {occasion.name}
             </h3>
 
@@ -79,7 +79,7 @@ function OccasionCard({ occasion, index }: OccasionCardProps) {
           </div>
 
           {/* Content */}
-          <div className="flex flex-col flex-1 p-4 bg-bg-void/60 backdrop-blur-sm border-t border-gold/10">
+          <div className="occasion-copy flex flex-col flex-1 p-4 bg-bg-void/60 backdrop-blur-sm border-t border-gold/10">
             <p className="text-text-muted text-xs md:text-sm mb-3 leading-relaxed font-devanagari line-clamp-2 flex-1">
               {occasion.description}
             </p>
@@ -129,7 +129,7 @@ export function OccasionsSection({ occasions }: OccasionsSectionProps) {
 
         {/* 6-card grid */}
         <Stagger
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 mb-12"
+          className="occasion-grid grid grid-cols-2 md:grid-cols-3 gap-4 mb-12"
           stagger={0.08}
         >
           {occasions.map((occasion, i) => (

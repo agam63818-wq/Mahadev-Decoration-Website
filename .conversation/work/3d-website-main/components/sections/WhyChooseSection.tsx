@@ -20,7 +20,7 @@ function FeatureCard({ feature, index }: FeatureCardProps) {
         maxTilt={4}
         lift={6}
         className={[
-          'h-full flex flex-col items-center text-center p-6 md:p-8 rounded-2xl',
+          'assurance-card h-full flex flex-col items-center text-center p-6 md:p-8 rounded-2xl',
           'border border-gold/10 bg-gradient-to-br from-bg-purple/40 to-bg-rich/60',
           'hover:border-gold/40 shadow-card-lift hover:shadow-gold-glow-sm',
           'transition-[border-color,box-shadow] duration-300',
@@ -36,7 +36,7 @@ function FeatureCard({ feature, index }: FeatureCardProps) {
 
         {/* Icon badge */}
         <motion.div
-          whileHover={{ rotate: [0, -8, 8, 0] }}
+          whileHover={{ rotate: 0 }}
           transition={{ duration: 0.5 }}
           className="relative w-14 h-14 md:w-16 md:h-16 rounded-full border border-gold/20 bg-gradient-to-br from-gold/10 to-bg-void/20 flex items-center justify-center mb-4 group-hover:border-gold/60 group-hover:bg-gold/15 group-hover:shadow-gold-glow-sm transition-all duration-300"
         >

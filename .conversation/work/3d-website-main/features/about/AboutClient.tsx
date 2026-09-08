@@ -35,16 +35,16 @@ function TeamCard({ member, index }: { member: TeamMember; index: number }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
-      className="bg-bg-purple border border-gold/10 rounded-2xl p-6 hover:border-gold/30 transition-colors"
+      className="team-portrait bg-bg-purple border border-gold/10 rounded-2xl p-6 hover:border-gold/30 transition-colors"
     >
       {/* Avatar — real photo, else initial */}
-      <div className="relative w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-gold/30 to-bg-burgundy border-2 border-gold/30 flex items-center justify-center mx-auto mb-4 text-2xl font-bold text-gold">
+      <div className="team-photo relative w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-gold/30 to-bg-burgundy border-2 border-gold/30 flex items-center justify-center mx-auto mb-4 text-2xl font-bold text-gold">
         {showPhoto ? (
           <Image
             src={member.photoUrl}
             alt={member.photoAlt || member.name}
             fill
-            sizes="80px"
+            sizes="(max-width: 640px) 100vw, 33vw"
             onError={() => setPhotoFailed(true)}
             className="object-cover"
           />
@@ -76,6 +76,7 @@ export function AboutClient({ teamMembers, teamError, stats, business }: AboutCl
       {/* Brand story */}
       <section aria-labelledby="story-heading">
         <div className="about-story-grid grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div className="about-story-art" aria-hidden="true" />
           <motion.div
             initial={false}
             whileInView={{ opacity: 1, x: 0 }}
@@ -124,7 +125,7 @@ export function AboutClient({ teamMembers, teamError, stats, business }: AboutCl
       {/* Values */}
       <section aria-labelledby="values-heading">
         <SectionHeading id="values-heading" title="हमारे मूल्य" className="mb-10" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="about-values grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             { icon: Heart, title: 'जुनून', desc: 'हर काम में दिल लगाते हैं — सिर्फ सजावट नहीं, यादें बनाते हैं।' },
             { icon: Award, title: 'गुणवत्ता', desc: 'प्रीमियम मटेरियल, प्रोफेशनल टीम, और बेहतरीन रिजल्ट।' },
@@ -160,7 +161,7 @@ export function AboutClient({ teamMembers, teamError, stats, business }: AboutCl
             description="अभी टीम के सदस्य जोड़े नहीं गए हैं।"
           />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="team-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {teamMembers.map((member, i) => (
               <TeamCard key={member.id} member={member} index={i} />
             ))}

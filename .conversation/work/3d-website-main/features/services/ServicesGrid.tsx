@@ -42,23 +42,24 @@ function ServiceCard({ service, index }: ServiceCardProps) {
   return (
     <motion.article
       id={service.eventType}
+      data-has-photo={showImage}
       initial={false}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.5, delay: (index % 4) * 0.08, ease: 'easeOut' }}
-      className="group bg-bg-purple border border-gold/10 rounded-2xl overflow-hidden hover:border-gold/40 hover:shadow-card-lift transition-all duration-250"
+      className="service-card group bg-bg-purple border border-gold/10 rounded-2xl overflow-hidden hover:border-gold/40 hover:shadow-card-lift transition-all duration-250"
     >
       {/* Image area — renders the admin-managed image_url when present, and
           falls back to the original gradient + icon treatment only when the
           service genuinely has no image (or its image 404s). */}
-      <div className="relative aspect-video overflow-hidden bg-gradient-to-br from-bg-void to-bg-burgundy">
+      <div className="service-photo relative aspect-video overflow-hidden bg-gradient-to-br from-bg-void to-bg-burgundy">
         {showImage ? (
           <>
             <Image
               src={service.imageUrl}
               alt={service.imageAlt || service.name}
               fill
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               onError={() => setImageFailed(true)}
               className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
             />
@@ -85,8 +86,8 @@ function ServiceCard({ service, index }: ServiceCardProps) {
         )}
       </div>
 
-      <div className="p-5">
-        <div className="flex items-start gap-3 mb-3">
+      <div className="service-copy p-5">
+        <div className="service-title flex items-start gap-3 mb-3">
           <div className="w-9 h-9 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center flex-shrink-0">
             {IconComponent && <IconComponent size={16} className="text-gold" />}
           </div>
@@ -102,7 +103,7 @@ function ServiceCard({ service, index }: ServiceCardProps) {
           {service.description}
         </p>
 
-        <div className="flex items-center justify-between">
+        <div className="service-actions flex items-center justify-between">
           <span className="text-gold font-semibold text-sm">
             Starting from {formatPrice(service.startingPrice)}
           </span>
@@ -132,7 +133,7 @@ interface ServicesGridProps {
 
 export function ServicesGrid({ services }: ServicesGridProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <div className="service-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {services.map((service, i) => (
         <ServiceCard key={service.id} service={service} index={i} />
       ))}

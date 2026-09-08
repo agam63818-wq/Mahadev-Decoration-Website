@@ -112,7 +112,7 @@ export function GalleryPageClient({ items, categories }: GalleryPageClientProps)
           }
         />
       ) : (
-        <motion.div layout className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <motion.div layout className="portfolio-grid grid grid-cols-2 md:grid-cols-3 gap-4">
           <AnimatePresence mode="popLayout">
             {filtered.map((item, i) => {
               const primaryImage = item.images.find((img) => img.isPrimary) ?? item.images[0]
@@ -120,22 +120,22 @@ export function GalleryPageClient({ items, categories }: GalleryPageClientProps)
                 <motion.article
                   key={item.id}
                   layout
-                  initial={{ opacity: 0, y: 20, scale: 0.96 }}
+                  initial={false}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.92, transition: { duration: 0.22 } }}
                   transition={{ duration: 0.5, delay: (i % 8) * 0.05, ease: EASE_PREMIUM, layout: { duration: 0.45, ease: EASE_PREMIUM } }}
-                  className="group relative overflow-hidden rounded-2xl cursor-pointer border border-gold/10 hover:border-gold/40 shadow-card-lift hover:shadow-gold-glow-sm transition-[border-color,box-shadow] duration-300"
+                  className="portfolio-card group relative overflow-hidden rounded-2xl cursor-pointer border border-gold/10 hover:border-gold/40 shadow-card-lift hover:shadow-gold-glow-sm transition-[border-color,box-shadow] duration-300"
                   onClick={() => setSelectedItem(item)}
                   role="button"
                   tabIndex={0}
                   aria-label={`${item.title} देखें`}
                   onKeyDown={(e) => e.key === 'Enter' && setSelectedItem(item)}
-                  whileHover={{ y: -6, transition: { duration: 0.25 } }}
-                  whileTap={{ scale: 0.985 }}
+                  whileHover={{ y: 0 }}
+                  whileTap={{ scale: 1 }}
                 >
-                  <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-bg-purple to-bg-burgundy">
+                  <div className="portfolio-photo relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-bg-purple to-bg-burgundy">
                     <div
-                      className="absolute inset-0 transition-transform duration-500 group-hover:scale-[1.06]"
+                      className="absolute inset-0 transition-transform duration-500 group-hover:scale-[1.025]"
                       style={{
                         background: [
                           'linear-gradient(135deg, #1A0B2E, #3D0F24)',
@@ -153,14 +153,14 @@ export function GalleryPageClient({ items, categories }: GalleryPageClientProps)
                         src={primaryImage.url}
                         alt={primaryImage.alt}
                         fill
-                        className="object-cover transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06] will-change-transform"
+                        className="object-cover transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.025] will-change-transform"
                         sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
                         onError={() => {}}
                       />
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-bg-void/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   </div>
-                  <div className="p-3 bg-bg-purple/80 border-t border-gold/10">
+                  <div className="portfolio-caption p-3 bg-bg-purple/80 border-t border-gold/10">
                     <h2 className="text-champagne text-sm font-semibold font-devanagari truncate group-hover:text-gold-bright transition-colors">{item.title}</h2>
                     <p className="text-gold text-xs mt-0.5">{item.priceRange}</p>
                   </div>
@@ -173,7 +173,7 @@ export function GalleryPageClient({ items, categories }: GalleryPageClientProps)
       </LayoutGroup>
 
       {/* Detail modal */}
-      <Modal open={!!selectedItem} onClose={() => setSelectedItem(null)} title={selectedItem?.title}>
+      <Modal open={!!selectedItem} onClose={() => setSelectedItem(null)} title={selectedItem?.title} className="gallery-lightbox">
         {selectedItem && (
           <div className="p-6">
             {/* PART A: every image in this design's portfolio_media set, each with

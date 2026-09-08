@@ -95,7 +95,7 @@ export function LooksGallery({ item, compact = false }: LooksGalleryProps) {
 
       {/* Active look */}
       <div
-        className={`relative rounded-2xl overflow-hidden border border-gold/20 bg-gradient-to-br from-bg-purple to-bg-burgundy mb-4 ${
+        className={`look-stage relative rounded-2xl overflow-hidden border border-gold/20 bg-gradient-to-br from-bg-purple to-bg-burgundy mb-4 ${
           compact ? 'aspect-video' : 'aspect-[4/3]'
         }`}
       >
@@ -108,7 +108,7 @@ export function LooksGallery({ item, compact = false }: LooksGalleryProps) {
             src={active.url}
             alt={active.alt}
             fill
-            className="object-cover"
+            className="object-contain"
             sizes="(max-width: 1024px) 100vw, 50vw"
             priority={!compact}
           />
@@ -211,7 +211,7 @@ export function LooksGallery({ item, compact = false }: LooksGalleryProps) {
                     src={img.url}
                     alt={img.alt}
                     fill
-                    className="object-cover"
+                    className="object-contain"
                     sizes="150px"
                   />
                   {img.price != null && (

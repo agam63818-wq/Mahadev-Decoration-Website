@@ -20,30 +20,30 @@ export function PackagesPageClient({ packages }: PackagesPageClientProps) {
   const router = useRouter()
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="pricing-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {packages.map((pkg, i) => (
         <motion.article
           key={pkg.id}
           initial={false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: (i % 3) * 0.08 }}
-          className={`relative flex flex-col bg-bg-purple border rounded-2xl overflow-hidden transition-all duration-250 hover:shadow-card-lift ${
+          className={`pricing-card ${pkg.popular ? 'pricing-popular' : ''} relative flex flex-col bg-bg-purple border rounded-2xl overflow-hidden transition-all duration-250 hover:shadow-card-lift ${
             pkg.popular ? 'border-gold shadow-gold-glow-sm' : 'border-gold/20 hover:border-gold/40'
           }`}
         >
           {pkg.popular && (
-            <div className="bg-gold text-bg-void text-xs font-bold text-center py-1 font-devanagari">
+            <div className="pricing-ribbon bg-gold text-bg-void text-xs font-bold text-center py-1 font-devanagari">
               ⭐ सबसे लोकप्रिय
             </div>
           )}
 
-          <div className="p-6 flex flex-col flex-1">
+          <div className="pricing-content p-6 flex flex-col flex-1">
             <h2 className="text-champagne font-bold text-xl font-devanagari mb-1">{pkg.name}</h2>
             <p className="text-text-muted text-xs uppercase tracking-wider mb-4">{pkg.nameEn}</p>
 
             <div className="mb-4">
               <span className="text-text-muted text-sm">Starting from </span>
-              <div className="text-3xl font-bold text-gold tabular-nums">{formatPrice(pkg.startingPrice)}</div>
+              <div className="pricing-amount text-3xl font-bold text-gold tabular-nums">{formatPrice(pkg.startingPrice)}</div>
               {pkg.priceRange && <p className="text-text-muted text-xs mt-0.5">{pkg.priceRange}</p>}
             </div>
 
@@ -56,7 +56,7 @@ export function PackagesPageClient({ packages }: PackagesPageClientProps) {
               )}
             </div>
 
-            <ul className="space-y-2 mb-5 flex-1">
+            <ul className="pricing-inclusions space-y-2 mb-5 flex-1">
               {pkg.inclusions.map((item) => (
                 <li key={item} className="flex items-start gap-2 text-sm text-text-muted">
                   <Check size={14} className="text-gold flex-shrink-0 mt-0.5" />
@@ -71,7 +71,7 @@ export function PackagesPageClient({ packages }: PackagesPageClientProps) {
               </div>
             )}
 
-            <div className="flex flex-col gap-2">
+            <div className="pricing-actions flex flex-col gap-2">
               <button
                 onClick={() => router.push(buildBookingUrl({ eventType: pkg.eventType, packageId: pkg.id, sourceName: pkg.nameEn }))}
                 className="w-full py-3 rounded-xl bg-gold text-bg-void font-bold hover:bg-gold-light transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"

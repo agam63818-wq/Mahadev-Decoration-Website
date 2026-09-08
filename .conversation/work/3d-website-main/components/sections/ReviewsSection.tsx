@@ -56,7 +56,7 @@ function ReviewCard({ review }: ReviewCardProps) {
     <TiltCard
       maxTilt={3}
       lift={5}
-      className="h-full bg-gradient-to-br from-bg-purple to-bg-rich border border-gold/10 rounded-2xl p-6 hover:border-gold/35 shadow-card-lift hover:shadow-gold-glow-sm transition-[border-color,box-shadow] duration-300"
+      className="testimonial-card h-full bg-gradient-to-br from-bg-purple to-bg-rich border border-gold/10 rounded-2xl p-6 hover:border-gold/35 shadow-card-lift hover:shadow-gold-glow-sm transition-[border-color,box-shadow] duration-300"
     >
     <article className="relative h-full flex flex-col">
       {/* Top gold accent */}
@@ -95,7 +95,7 @@ function ReviewCard({ review }: ReviewCardProps) {
       </div>
 
       {/* Review text — premium typography */}
-      <p className="text-text-muted text-sm leading-relaxed mt-2 font-devanagari line-clamp-3">
+      <p className="testimonial-quote text-text-muted text-sm leading-relaxed mt-2 font-devanagari">
         &ldquo;{review.reviewText}&rdquo;
       </p>
 

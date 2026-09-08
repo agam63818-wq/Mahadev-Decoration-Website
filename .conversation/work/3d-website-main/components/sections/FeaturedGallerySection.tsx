@@ -35,21 +35,21 @@ function GalleryCard({ item, index, onClick }: GalleryCardProps) {
     <motion.article
       layout
       layoutId={`gallery-card-${item.id}`}
-      initial={{ opacity: 0, y: 22, scale: 0.96 }}
+      initial={false}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.92, transition: { duration: 0.25 } }}
       transition={{ duration: 0.55, delay: index * 0.05, ease: EASE_PREMIUM, layout: { duration: 0.45, ease: EASE_PREMIUM } }}
-      className="group relative overflow-hidden rounded-2xl cursor-pointer border border-gold/10 hover:border-gold/40 shadow-card-lift hover:shadow-gold-glow-sm transition-[border-color,box-shadow] duration-300"
+      className="portfolio-card group relative overflow-hidden rounded-2xl cursor-pointer border border-gold/10 hover:border-gold/40 shadow-card-lift hover:shadow-gold-glow-sm transition-[border-color,box-shadow] duration-300"
       onClick={onClick}
       role="button"
       tabIndex={0}
       aria-label={`${item.title} देखें`}
       onKeyDown={(e) => e.key === 'Enter' && onClick()}
-      whileHover={{ y: -6, transition: { duration: 0.25 } }}
-      whileTap={{ scale: 0.985 }}
+      whileHover={{ y: 0 }}
+      whileTap={{ scale: 1 }}
     >
       {/* Image area — stacked gradients for depth */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-bg-purple to-bg-burgundy rounded-2xl">
+      <div className="portfolio-photo relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-bg-purple to-bg-burgundy rounded-2xl">
         {/* Rich gradient base */}
         <div
           className="absolute inset-0 transition-transform duration-500 group-hover:scale-[1.08] will-change-transform rounded-2xl"
@@ -77,7 +77,7 @@ function GalleryCard({ item, index, onClick }: GalleryCardProps) {
             src={primaryImage.url}
             alt={primaryImage.alt}
             fill
-            className="object-cover transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06] will-change-transform"
+            className="object-cover transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.025] will-change-transform"
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
             onError={() => {}}
           />
@@ -112,7 +112,7 @@ function GalleryCard({ item, index, onClick }: GalleryCardProps) {
       </div>
 
       {/* Content card below image */}
-      <div className="p-3 bg-bg-void/70 border border-gold/5 rounded-b-2xl">
+      <div className="portfolio-caption p-3 bg-bg-void/70 border border-gold/5 rounded-b-2xl">
         <h3 className="text-champagne text-sm font-semibold font-devanagari truncate group-hover:text-gold-bright transition-colors duration-300">
           {item.title}
         </h3>
@@ -137,7 +137,7 @@ function GalleryDetailModal({ item, onClose, onBook }: GalleryDetailModalProps) 
   if (!item) return null
 
   return (
-    <Modal open={!!item} onClose={onClose} title={item.title} className="max-w-2xl">
+    <Modal open={!!item} onClose={onClose} title={item.title} className="gallery-lightbox max-w-2xl">
       <div className="p-6 space-y-6">
         {/* Primary image — deep premium treatment */}
         <div className="relative aspect-video rounded-2xl overflow-hidden bg-gradient-to-br from-bg-purple to-bg-burgundy">
@@ -282,7 +282,7 @@ export function FeaturedGallerySection({ items }: FeaturedGallerySectionProps) {
   }
 
   return (
-    <section className="relative py-16 md:py-24 bg-bg-purple/30 overflow-hidden" aria-labelledby="gallery-heading">
+    <section className="portfolio-showcase relative py-16 md:py-24 bg-bg-purple/30 overflow-hidden" aria-labelledby="gallery-heading">
       {/* Background glow */}
       <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-gold/3 blur-3xl pointer-events-none opacity-30" />
       <div className="absolute bottom-0 left-0 w-[300px] h-[300px] rounded-full bg-burgundy/5 blur-2xl pointer-events-none" />
@@ -336,7 +336,7 @@ export function FeaturedGallerySection({ items }: FeaturedGallerySectionProps) {
 
           {/* Gallery grid — shared-layout reflow on filter change */}
           <Reveal className="mb-10" y={24} duration={0.7}>
-            <motion.div layout className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <motion.div layout className="portfolio-grid grid grid-cols-2 md:grid-cols-3 gap-4">
               <AnimatePresence mode="popLayout" initial={false}>
                 {filtered.map((item, i) => (
                   <GalleryCard
