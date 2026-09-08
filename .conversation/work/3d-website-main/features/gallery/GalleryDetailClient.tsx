@@ -18,7 +18,7 @@ export function GalleryDetailClient({ item, bookingUrl }: GalleryDetailClientPro
   const hasPricedLooks = item.images.some(isBookableLook)
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+    <div className="portfolio-detail grid grid-cols-1 lg:grid-cols-2 gap-10">
       {/* Every look in this design, each with its own label + price */}
       <div>
         <LooksGallery item={item} />
@@ -26,7 +26,7 @@ export function GalleryDetailClient({ item, bookingUrl }: GalleryDetailClientPro
 
       {/* Details */}
       <motion.div
-        initial={{ opacity: 0, x: 20 }}
+        initial={false}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
       >

@@ -33,11 +33,11 @@ function PackageCard({ pkg }: PackageCardProps) {
   }
 
   return (
-    <StaggerItem className={`group h-full ${pkg.popular ? 'lg:-mt-3' : ''}`}>
+    <StaggerItem className="group h-full">
     <TiltCard
       maxTilt={3}
       lift={7}
-      className={`h-full bg-gradient-to-br from-bg-purple to-bg-rich border rounded-2xl overflow-hidden transition-[border-color,box-shadow] duration-300 ${
+      className={`pricing-card ${pkg.popular ? 'pricing-popular' : ''} h-full bg-gradient-to-br from-bg-purple to-bg-rich border rounded-2xl overflow-hidden transition-[border-color,box-shadow] duration-300 ${
         pkg.popular
           ? 'border-gold shadow-gold-glow hover:shadow-gold-glow-lg'
           : 'border-gold/15 hover:border-gold/40 shadow-card-lift hover:shadow-gold-glow-sm'
@@ -49,13 +49,13 @@ function PackageCard({ pkg }: PackageCardProps) {
 
       {/* Popular badge */}
       {pkg.popular && (
-        <div className="absolute top-3 right-3 z-10 bg-gradient-to-r from-gold-warm/20 to-gold/10 border border-gold/30 rounded-full px-3 py-1 text-gold text-xs font-bold font-devanagari flex items-center gap-1.5 shadow-lg shadow-gold/10 backdrop-blur-sm">
+        <div className="pricing-ribbon absolute top-3 right-3 z-10 bg-gradient-to-r from-gold-warm/20 to-gold/10 border border-gold/30 rounded-full px-3 py-1 text-gold text-xs font-bold font-devanagari flex items-center gap-1.5 shadow-lg shadow-gold/10 backdrop-blur-sm">
           <Star size={12} fill="currentColor" className="text-gold" />
           सबसे लोकप्रिय
         </div>
       )}
 
-      <div className="p-6 flex flex-col flex-1 mt-8">
+      <div className="pricing-content p-6 flex flex-col flex-1 mt-8">
         {/* Header — premium typography */}
         <div className="mb-5">
           <div className="flex items-start justify-between gap-3 mb-1.5">
@@ -77,7 +77,7 @@ function PackageCard({ pkg }: PackageCardProps) {
           <div className="flex items-baseline gap-2 mb-1">
             <span className="text-text-muted text-xs font-devanagari">शुरुआती कीमत</span>
           </div>
-          <div className="bg-gradient-to-r from-gold-warm via-gold to-gold-bright bg-clip-text text-transparent">
+          <div className="pricing-amount bg-gradient-to-r from-gold-warm via-gold to-gold-bright bg-clip-text text-transparent">
             <span className="text-3xl font-bold font-devanagari tabular-nums">
               <Counter value={formatPrice(pkg.startingPrice)} duration={1.2} />
             </span>
@@ -104,7 +104,7 @@ function PackageCard({ pkg }: PackageCardProps) {
         </div>
 
         {/* Inclusions — premium checklist */}
-        <ul className="space-y-2.5 mb-6 flex-1">
+        <ul className="pricing-inclusions space-y-2.5 mb-6 flex-1">
           {pkg.inclusions.slice(0, 6).map((item, i) => (
             <motion.li
               key={item}
@@ -140,7 +140,7 @@ function PackageCard({ pkg }: PackageCardProps) {
         <div className="my-3 h-px bg-gradient-to-r from-gold/10 via-transparent to-gold/10" />
 
         {/* Actions — premium footer */}
-        <div className="flex flex-col gap-2.5">
+        <div className="pricing-actions flex flex-col gap-2.5">
           <Magnetic strength={0.15} className="w-full">
             <Button
               variant="primary"
@@ -191,7 +191,7 @@ export function PackagesSection({ packages }: PackagesSectionProps) {
         />
 
         {/* Packages grid — premium cards */}
-        <Stagger className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-12 lg:pt-3" stagger={0.12}>
+        <Stagger className="pricing-grid pricing-home grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-12" stagger={0.12}>
           {packages.map((pkg, i) => (
             <PackageCard key={pkg.id} pkg={pkg} index={i} />
           ))}

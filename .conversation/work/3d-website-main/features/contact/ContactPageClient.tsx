@@ -58,9 +58,9 @@ export function ContactPageClient({ business, areas }: ContactPageClientProps) {
 
   return (
     <>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+      <div className="contact-layout grid grid-cols-1 lg:grid-cols-2 gap-12">
         {/* Contact info */}
-        <div className="space-y-6">
+        <div className="contact-details space-y-6">
           <motion.div
             initial={false}
             animate={{ opacity: 1, x: 0 }}
@@ -133,7 +133,7 @@ export function ContactPageClient({ business, areas }: ContactPageClientProps) {
             </div>
 
             {/* Business hours */}
-            <div className="mt-6 p-5 bg-bg-purple border border-gold/10 rounded-xl">
+            <div className="contact-hours mt-6 p-5 bg-bg-purple border border-gold/10 rounded-xl">
               <div className="flex items-center gap-2 mb-4">
                 <Clock size={16} className="text-gold" />
                 <h3 className="text-champagne font-semibold font-devanagari">कार्य समय</h3>
@@ -157,6 +157,7 @@ export function ContactPageClient({ business, areas }: ContactPageClientProps) {
           initial={false}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
+          className="contact-form-panel"
         >
           <h2 className="text-2xl font-bold text-champagne font-devanagari mb-6">संदेश भेजें</h2>
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
@@ -266,7 +267,7 @@ export function ContactPageClient({ business, areas }: ContactPageClientProps) {
           hidden until the admin actually fills in an address, so the page never
           shows a placeholder location as if it were real. */}
       {locationLabel && (
-        <div className="mt-12">
+        <div className="contact-location mt-12">
           <h2 className="text-xl font-bold text-champagne font-devanagari mb-4">हमारा स्थान</h2>
           <div className="relative rounded-2xl overflow-hidden border border-gold/20 bg-bg-purple">
             <div className="flex flex-col items-center justify-center gap-3 py-12 px-6">

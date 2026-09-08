@@ -29,8 +29,8 @@ export default async function GalleryPage() {
   const items = itemsResult.ok ? itemsResult.data : []
 
   return (
-    <div className="min-h-screen bg-bg-void pt-20">
-      <div className="bg-gradient-to-b from-bg-purple to-bg-void py-16 px-4">
+    <div className="catalog-page gallery-page min-h-screen bg-bg-void pt-20">
+      <div className="catalog-masthead bg-gradient-to-b from-bg-purple to-bg-void py-16 px-4">
         <div className="max-w-7xl mx-auto text-center">
           <SectionHeading
             title="हमारी शानदार सजावट"

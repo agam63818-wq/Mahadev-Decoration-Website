@@ -61,7 +61,7 @@ export function ReviewsPageClient({ reviews }: ReviewsPageClientProps) {
   return (
     <>
       {/* Summary bar */}
-      <div className="flex flex-col sm:flex-row items-center gap-6 mb-8 p-6 bg-bg-purple border border-gold/20 rounded-2xl">
+      <div className="review-summary flex flex-col sm:flex-row items-center gap-6 mb-8 p-6 bg-bg-purple border border-gold/20 rounded-2xl">
         <div className="text-center">
           <div className="text-5xl font-bold text-gold tabular-nums">{avgRating}</div>
           <div className="flex gap-0.5 justify-center mt-1">
@@ -127,14 +127,14 @@ export function ReviewsPageClient({ reviews }: ReviewsPageClientProps) {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="review-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filtered.map((review, i) => (
             <motion.article
               key={review.id}
               initial={false}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: (i % 6) * 0.06 }}
-              className="bg-bg-purple border border-gold/10 rounded-2xl p-6 hover:border-gold/30 transition-colors"
+              className="testimonial-card bg-bg-purple border border-gold/10 rounded-2xl p-6 hover:border-gold/30 transition-colors"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -157,7 +157,7 @@ export function ReviewsPageClient({ reviews }: ReviewsPageClientProps) {
                 ))}
               </div>
 
-              <p className="text-text-muted text-sm leading-relaxed font-devanagari">
+              <p className="testimonial-quote text-text-muted text-sm leading-relaxed font-devanagari">
                 &ldquo;{review.reviewText}&rdquo;
               </p>
 

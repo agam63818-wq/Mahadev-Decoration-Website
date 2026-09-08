@@ -43,7 +43,7 @@ export default async function PackageDetailPage({ params }: Props) {
   // package for a slug the owner had already deleted.
   if (!result.ok) {
     return (
-      <div className="min-h-screen bg-bg-void pt-20">
+      <div className="package-detail-page min-h-screen bg-bg-void pt-20">
         <RetryableErrorState />
       </div>
     )
@@ -65,7 +65,7 @@ export default async function PackageDetailPage({ params }: Props) {
     : ''
 
   return (
-    <div className="min-h-screen bg-bg-void pt-20">
+    <div className="package-detail-page min-h-screen bg-bg-void pt-20">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <Link
           href="/packages"
@@ -75,7 +75,7 @@ export default async function PackageDetailPage({ params }: Props) {
           <span>पैकेज पर वापस जाएं</span>
         </Link>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <div className="package-detail-grid grid grid-cols-1 lg:grid-cols-2 gap-10">
           {/* Left: Package image placeholder */}
           <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-gold/20 bg-gradient-to-br from-bg-purple to-bg-burgundy">
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
@@ -95,7 +95,7 @@ export default async function PackageDetailPage({ params }: Props) {
 
             <div className="mb-5">
               <span className="text-text-muted text-sm">Starting from </span>
-              <div className="text-4xl font-bold text-gold tabular-nums">{formatPrice(pkg.startingPrice)}</div>
+              <div className="pricing-amount text-4xl font-bold text-gold tabular-nums">{formatPrice(pkg.startingPrice)}</div>
               {pkg.priceRange && <p className="text-text-muted text-sm mt-1">{pkg.priceRange}</p>}
             </div>
 
