@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { EASE_PREMIUM } from '@/components/motion'
@@ -59,6 +59,8 @@ export function BookingPlaceholder() {
   const [data, setData] = useState<BookingData>({ ...initial, eventType: prefilledEvent })
   const [files, setFiles] = useState<File[]>([])
   const [busy, setBusy] = useState(false)
+  const submitting = useRef(false)
+  const submission = useRef<{ digest: string; key: string } | null>(null)
   const [error, setError] = useState('')
   const update = (patch: Partial<BookingData>) => setData((current) => ({ ...current, ...patch }))
   const selectedEvent = events.find(([id]) => id === data.eventType)
@@ -78,26 +80,41 @@ export function BookingPlaceholder() {
   }, [data, step])
 
   async function submit() {
+    if (submitting.current) return
+    submitting.current = true
     setBusy(true); setError('')
     try {
+      const body = JSON.stringify({
+        ...data,
+        referenceFiles: files.map((file) => file.name),
+        selectedPortfolioMediaId: selectedPortfolioMediaId || undefined,
+        selectedPortfolioItemId: selectedPortfolioItemId || undefined,
+        selectedServiceId: params.get('serviceId') || undefined,
+        selectedPackageId: params.get('packageId') || undefined,
+        selectedVariantLabel: selectedVariantLabel || undefined,
+        selectedPrice: selectedPrice ?? undefined,
+      })
+      // Persist only an opaque key + digest, never contact details. Refresh/retry
+      // reuses the same key for identical form data in this tab for 24 hours.
+      const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body))))
+        .map((byte) => byte.toString(16).padStart(2, '0')).join('')
+      if (submission.current?.digest !== digest) {
+        let key = crypto.randomUUID()
+        try {
+          const saved = JSON.parse(sessionStorage.getItem(`booking-submit:${digest}`) ?? 'null')
+          if (saved && typeof saved.key === 'string' && Date.now() - saved.at < 86400000) key = saved.key
+          sessionStorage.setItem(`booking-submit:${digest}`, JSON.stringify({ key, at: Date.now() }))
+        } catch { /* Storage may be denied; in-memory key still survives retries. */ }
+        submission.current = { digest, key }
+      }
       const response = await fetch('/api/booking-requests', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...data,
-          referenceFiles: files.map((file) => file.name),
-          // Persisted as booking_requests.selected_portfolio_media_id so the
-          // admin can see exactly which priced look was picked.
-          selectedPortfolioMediaId: selectedPortfolioMediaId || undefined,
-          portfolioItemId: selectedPortfolioItemId || undefined,
-          selectedVariantLabel: selectedVariantLabel || undefined,
-          selectedPrice: selectedPrice ?? undefined,
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': submission.current.key }, body,
       })
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || 'बुकिंग भेजने में समस्या आई।')
       router.push(`/booking/success?ref=${encodeURIComponent(result.reference)}`)
     } catch (e) { setError(e instanceof Error ? e.message : 'कृपया दोबारा प्रयास करें।') }
-    finally { setBusy(false) }
+    finally { submitting.current = false; setBusy(false) }
   }
 
   return <main className="booking-page min-h-screen bg-bg-void px-4 pb-20 pt-28">

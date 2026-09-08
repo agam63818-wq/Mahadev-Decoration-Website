@@ -5,8 +5,8 @@ import { BookingsManager } from './BookingsManager'
 // Bookings change constantly and the list is admin-only, so never cache it.
 export const dynamic = 'force-dynamic'
 
-export default async function AdminBookingsPage() {
-  const { bookings, failed } = await getAdminBookingRequests()
+export default async function AdminBookingsPage({ searchParams }: { searchParams: { ref?: string } }) {
+  const { bookings, failed } = await getAdminBookingRequests(searchParams.ref)
   // §24: `failed` is forwarded so the manager can show an error + Retry
   // instead of an empty state. An empty booking list and a broken query look
   // identical to the owner otherwise, and the wrong one is very alarming.

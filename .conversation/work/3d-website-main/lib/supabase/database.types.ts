@@ -106,6 +106,32 @@ export type BookingRequestRow = {
   created_at: string
 }
 
+export type AdminPushSubscriptionRow = {
+  id: string
+  profile_id: string
+  endpoint: string
+  p256dh: string
+  auth: string
+  user_agent: string | null
+  enabled: boolean
+  created_at: string
+  updated_at: string
+  last_success_at: string | null
+  last_failure_at: string | null
+  last_test_at: string | null
+}
+
+export type ClaimedPushDelivery = {
+  delivery_id: string
+  event_id: string
+  subscription_id: string
+  lease_token: string
+  payload: Json
+  endpoint: string
+  p256dh: string
+  auth: string
+}
+
 export type NotificationRow = {
   id: string
   type: string
@@ -309,9 +335,20 @@ export type Database = {
       team_members: TableOf<TeamMemberRow>
       payments: TableOf<PaymentRow>
       notifications: TableOf<NotificationRow>
+      admin_push_subscriptions: TableOf<AdminPushSubscriptionRow>
     }
     Views: Record<string, never>
     Functions: {
+      register_admin_push: {
+        Args: { p_profile_id: string; p_endpoint: string; p_p256dh: string; p_auth: string; p_user_agent: string }
+        Returns: string
+      }
+      prepare_booking_push: { Args: Record<string, never>; Returns: undefined }
+      claim_booking_push: { Args: Record<string, never>; Returns: ClaimedPushDelivery[] }
+      finish_booking_push: {
+        Args: { p_delivery_id: string; p_lease_token: string; p_result: string; p_error?: string; p_retry_seconds?: number }
+        Returns: boolean
+      }
       is_admin: {
         Args: Record<string, never>
         Returns: boolean

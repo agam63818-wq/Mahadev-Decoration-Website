@@ -41,7 +41,7 @@ export async function middleware(request: NextRequest) {
   // an unconfigured backend is not a reason to expose business data.
   if (!supabaseUrl || !supabaseAnonKey) {
     url.pathname = isAdminRoute ? '/admin/login' : '/login'
-    url.searchParams.set('redirectTo', pathname)
+    url.searchParams.set('redirectTo', `${pathname}${request.nextUrl.search}`)
     url.searchParams.set('reason', 'auth-unconfigured')
     return NextResponse.redirect(url)
   }
@@ -77,7 +77,7 @@ export async function middleware(request: NextRequest) {
 
   if (!user) {
     url.pathname = isAdminRoute ? '/admin/login' : '/login'
-    url.searchParams.set('redirectTo', pathname)
+    url.searchParams.set('redirectTo', `${pathname}${request.nextUrl.search}`)
     return NextResponse.redirect(url)
   }
 
@@ -92,6 +92,7 @@ export async function middleware(request: NextRequest) {
       // Signed in, but not staff. Send them to the admin login with a clear
       // reason rather than silently 404-ing.
       url.pathname = '/admin/login'
+      url.searchParams.set('redirectTo', `${pathname}${request.nextUrl.search}`)
       url.searchParams.set('reason', 'not-admin')
       return NextResponse.redirect(url)
     }

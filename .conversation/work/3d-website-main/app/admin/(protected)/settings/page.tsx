@@ -1,5 +1,6 @@
 import { getBusinessSettings } from '@/services/business'
 import { isSupabaseConfigured } from '@/lib/supabase/config'
+import { PushNotificationSettings } from '@/components/admin/PushNotificationSettings'
 import { SettingsForm } from './SettingsForm'
 import { TeamSettingsSection } from './TeamSettingsSection'
 
@@ -15,6 +16,7 @@ export default async function AdminSettingsPage() {
 
   return (
     <div className="space-y-10">
+      <PushNotificationSettings />
       <SettingsForm
         initial={{
           phone: settings.phone,

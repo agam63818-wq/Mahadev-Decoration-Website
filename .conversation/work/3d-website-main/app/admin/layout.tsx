@@ -5,6 +5,8 @@ export const metadata: Metadata = {
   description: 'महादेव डेकोरेशन का एडमिन प्रबंधन पैनल',
   // The admin panel must never appear in search results.
   robots: { index: false, follow: false },
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, title: 'Mahadev Admin', statusBarStyle: 'black-translucent' },
 }
 
 /**
